@@ -28,9 +28,9 @@ void taskPhysics() {
                      (float)SHIP_HALF_W,
                      (float)(VIRTUAL_W - SHIP_HALF_W));
 
-  // ── Auto-fire timer ─────────────────────────────────────────────
-  if ((now - lastAutoFire) >= AUTO_FIRE_MS) {
-    lastAutoFire = now;
+  // ── Manual fire — shoot button (flagA set by ISR in buttons.ino) ─
+  if (flagA) {
+    flagA = false;
     spawnPlayerBullet();
   }
 
@@ -122,7 +122,6 @@ void initGame() {
   for (uint8_t i = 0; i < MAX_BULLETS;       i++) playerBullets[i].active = false;
   for (uint8_t i = 0; i < MAX_ENEMY_BULLETS; i++) enemyBullets[i].active  = false;
 
-  lastAutoFire  = millis();
   lastEnemyFire = millis();
 
   resetEnemyGrid();   // enemies.ino

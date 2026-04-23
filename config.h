@@ -42,20 +42,19 @@ const uint8_t BRIGHTNESS_VALUES[BRIGHTNESS_LEVELS] = { 10, 60, 150, 255 };
 #define TILT_SCALE_RIGHT    0.38f  // Adjust this for right sensitivity 
 #define CAL_SAMPLES         50
 
-// ── Buttons ──────────────────────────────────────────────────────
-#define PIN_A               13
-#define PIN_B               12
-#define DEBOUNCE_A_MS       60
-#define DEBOUNCE_B_MS       120
-
 // ── Scheduler ────────────────────────────────────────────────────
 #define SCHED_STATE_MS      10
 #define SCHED_SENSOR_MS     20
 #define SCHED_PHYSICS_MS    16
 #define SCHED_RENDER_MS     33
 
-// ── Auto-Fire ────────────────────────────────────────────────────
-#define AUTO_FIRE_MS        400
+// ── Shoot Button ─────────────────────────────────────────────────
+// GPIO13 = SHOOT (ISR) — manual fire, confirm menus, wake from sleep
+// GPIO12 = NAV   (polled) — cycle cursor, open pause
+#define PIN_SHOOT           12
+#define PIN_NAV             13
+#define DEBOUNCE_SHOOT_MS   25
+#define DEBOUNCE_NAV_MS     30
 
 // ── Game — scaled to 64x256 canvas ───────────────────────────────
 //  Ship lives at bottom of canvas (virtual Y ~249)
@@ -106,11 +105,22 @@ enum GameState : uint8_t {
   STATE_PLAYING   = 1,
   STATE_PAUSED    = 2,
   STATE_GAME_OVER = 3,
+  STATE_SETTINGS  = 4,
 };
 
+// ── Home Menu Items ──────────────────────────────────────────────
+#define HOME_START      0
+#define HOME_SETTINGS   1
+#define HOME_QUIT       2
+#define HOME_ITEMS      3
+
+// ── Settings Menu Items ──────────────────────────────────────────
+#define SETTINGS_BRIGHTNESS 0
+#define SETTINGS_BTNSWAP    1
+#define SETTINGS_BACK       2
+#define SETTINGS_ITEMS      3
+
 // ── Pause Menu Items ─────────────────────────────────────────────
-#define PAUSE_RESUME        0
-#define PAUSE_BRIGHTNESS    1
-#define PAUSE_SWAPBTN       2
-#define PAUSE_QUIT          3
-#define PAUSE_ITEMS         4
+#define PAUSE_RESUME    0
+#define PAUSE_QUIT      1
+#define PAUSE_ITEMS     2

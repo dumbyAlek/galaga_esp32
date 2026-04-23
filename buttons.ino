@@ -1,94 +1,50 @@
 // ================================================================
 //  buttons.ino — Button Input Management
-//
-//  PIN_A (GPIO13): Hardware ISR, FALLING edge.
-//    Kept as ISR because ESP32 EXT0 deep-sleep wakeup requires
-//    a fixed GPIO with an interrupt attached.
-//
-//  PIN_B (GPIO12): Software polled every 10ms inside
-//    taskStateMachine(). Deliberately NOT an ISR — the 400kHz
-//    I2C bus toggling during MPU-6050 reads couples capacitively
-//    into adjacent breadboard traces and causes phantom FALLING
-//    edges. Polling with a 120ms debounce window filters all
-//    such glitches since I2C pulses are ~2.5µs wide.
-//
-//  Button swap: btnSwapped (set in state_machine.ino) flips
-//    the logical role of each button without changing wiring.
-//    consumePower() / consumeNav() read through the swap lens.
+//  GPIO13 = SHOOT (ISR)  — fire / confirm selections / wake sleep
+//  GPIO12 = NAV   (polled) — cycle cursor / open pause
 // ================================================================
 
-// ──────────────────────────────────────────────────────────────────
-//  PIN_A — ISR
-// ──────────────────────────────────────────────────────────────────
-void IRAM_ATTR ISR_PinA() {
+void IRAM_ATTR ISR_Shoot() {
   static uint32_t last = 0;
   uint32_t now = millis();
-  if ((now - last) < DEBOUNCE_A_MS) return;
+  if ((now - last) < DEBOUNCE_SHOOT_MS) return;
   last = now;
-  flagA = true;
+  flagA = true;   // flagA = shoot flag
 }
 
-// ──────────────────────────────────────────────────────────────────
-//  PIN_B — Polled State Machine
-// ──────────────────────────────────────────────────────────────────
 struct PollState {
   bool     lastHigh  = true;
   uint32_t pressTime = 0;
   bool     confirmed = false;
-} pinBState;
+} pinNavState;
 
-void pollPinB() {
+void pollNav() {
   uint32_t now    = millis();
-  bool     isHigh = (digitalRead(PIN_B) == HIGH);
-
-  // Falling edge — button just pressed
-  if (pinBState.lastHigh && !isHigh) {
-    pinBState.pressTime = now;
-    pinBState.confirmed = false;
+  bool     isHigh = (digitalRead(PIN_NAV) == HIGH);
+  if (pinNavState.lastHigh && !isHigh) {
+    pinNavState.pressTime = now;
+    pinNavState.confirmed = false;
   }
-
-  // Held LOW long enough — confirmed press
-  if (!isHigh && !pinBState.confirmed &&
-      (now - pinBState.pressTime) >= DEBOUNCE_B_MS) {
-    pinBState.confirmed = true;
-    flagB = true;
+  if (!isHigh && !pinNavState.confirmed &&
+      (now - pinNavState.pressTime) >= DEBOUNCE_NAV_MS) {
+    pinNavState.confirmed = true;
+    flagB = true;   // flagB = nav flag
   }
-
-  // Rising edge — released, reset for next press
-  if (!pinBState.lastHigh && isHigh) {
-    pinBState.confirmed = false;
-  }
-
-  pinBState.lastHigh = isHigh;
+  if (!pinNavState.lastHigh && isHigh) pinNavState.confirmed = false;
+  pinNavState.lastHigh = isHigh;
 }
 
-// ──────────────────────────────────────────────────────────────────
-//  LOGICAL BUTTON CONSUMERS  (swap-aware)
-//  Returns true once then clears the flag.
-// ──────────────────────────────────────────────────────────────────
-bool consumePower() {
-  if (!btnSwapped) {
-    if (flagA) { flagA = false; return true; }
-  } else {
-    if (flagB) { flagB = false; return true; }
-  }
+bool consumeShoot() {
+  if (flagA) { flagA = false; return true; }
   return false;
 }
-
 bool consumeNav() {
-  if (!btnSwapped) {
-    if (flagB) { flagB = false; return true; }
-  } else {
-    if (flagA) { flagA = false; return true; }
-  }
+  if (flagB) { flagB = false; return true; }
   return false;
 }
 
-// ──────────────────────────────────────────────────────────────────
-//  INIT — called from setup() in galaga_esp32.ino
-// ──────────────────────────────────────────────────────────────────
 void initButtons() {
-  pinMode(PIN_A, INPUT_PULLUP);
-  pinMode(PIN_B, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(PIN_A), ISR_PinA, FALLING);
+  pinMode(PIN_SHOOT, INPUT_PULLUP);
+  pinMode(PIN_NAV,   INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(PIN_SHOOT), ISR_Shoot, FALLING);
 }

@@ -42,7 +42,8 @@ Adafruit_MPU6050 mpu;
 // ──────────────────────────────────────────────────────────────────
 //  SETTINGS  (loaded from EEPROM by scoring.ino on boot)
 // ──────────────────────────────────────────────────────────────────
-uint32_t highScore     = 0;
+uint32_t highScore        = 0;
+uint32_t topScores[3]     = {0, 0, 0};
 uint8_t  brightnessIdx = 2;
 bool     btnSwapped    = false;
 float    calOffsetX    = 0.0f;
@@ -50,8 +51,10 @@ float    calOffsetX    = 0.0f;
 // ──────────────────────────────────────────────────────────────────
 //  GAME STATE  (read/written by state_machine.ino, physics.ino)
 // ──────────────────────────────────────────────────────────────────
-GameState gameState   = STATE_HOME;
-uint8_t   pauseCursor = 0;
+GameState gameState      = STATE_HOME;
+uint8_t   homeCursor     = 0;
+uint8_t   pauseCursor    = 0;
+uint8_t   settingsCursor = 0;
 
 // ──────────────────────────────────────────────────────────────────
 //  SENSOR DATA  (written by sensors.ino, read by physics.ino)
@@ -73,7 +76,6 @@ Bullet   enemyBullets[MAX_ENEMY_BULLETS];
 Enemy    enemies[ENEMY_ROWS][ENEMY_COLS];
 uint8_t  enemiesAlive = 0;
 
-uint32_t lastAutoFire  = 0;
 uint32_t lastEnemyFire = 0;
 
 // ──────────────────────────────────────────────────────────────────
@@ -156,6 +158,8 @@ void setup() {
 
   // EEPROM + settings (scoring.ino)
   EEPROM.begin(EEPROM_SIZE);
+  EEPROM.write(EE_CALMAG_ADDR, 0x00);
+  EEPROM.commit();
   eepromLoad();
   applyBrightness();
 
