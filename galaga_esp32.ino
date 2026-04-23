@@ -56,7 +56,7 @@ uint8_t   pauseCursor = 0;
 // ──────────────────────────────────────────────────────────────────
 //  SENSOR DATA  (written by sensors.ino, read by physics.ino)
 // ──────────────────────────────────────────────────────────────────
-volatile float accelX = 0.0f;
+volatile float accelY = 0.0f;
 
 // ──────────────────────────────────────────────────────────────────
 //  GAME DATA  (shared across physics.ino, enemies.ino, render.ino)

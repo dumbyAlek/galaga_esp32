@@ -37,8 +37,9 @@ const uint8_t BRIGHTNESS_VALUES[BRIGHTNESS_LEVELS] = { 10, 60, 150, 255 };
 
 // ── MPU-6050 ─────────────────────────────────────────────────────
 #define MPU_ADDR            0x68
-#define TILT_DEADZONE       0.3f
-#define TILT_SCALE          0.09f       
+#define TILT_DEADZONE       0.1f
+#define TILT_SCALE_LEFT     0.24f  // Adjust this for left sensitivity
+#define TILT_SCALE_RIGHT    0.38f  // Adjust this for right sensitivity 
 #define CAL_SAMPLES         50
 
 // ── Buttons ──────────────────────────────────────────────────────
@@ -87,7 +88,7 @@ const uint8_t BRIGHTNESS_VALUES[BRIGHTNESS_LEVELS] = { 10, 60, 150, 255 };
 //  Byte  4    : uint8_t   magic (0xA5)
 //  Byte  5    : uint8_t   brightness index (0-3)
 //  Byte  6    : uint8_t   buttons swapped (0|1)
-//  Byte  7-10 : float     accelX calibration offset
+//  Byte  7-10 : float     accelY calibration offset
 //  Byte  11   : uint8_t   cal magic (0xB6)
 #define EEPROM_SIZE         16
 #define EE_HISCORE_ADDR     0

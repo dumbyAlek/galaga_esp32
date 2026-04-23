@@ -3,10 +3,10 @@
 //
 //  taskSensorPoll()  : runs at 50Hz, reads MPU-6050 accelerometer,
 //                      applies calibration offset and deadzone,
-//                      writes result to shared accelX.
+//                      writes result to shared accelY.
 //
 //  runCalibration()  : called once on first boot. Samples the
-//                      resting accelX 50 times, averages them,
+//                      resting accelY 50 times, averages them,
 //                      saves as calOffsetX to EEPROM. Subsequent
 //                      reads subtract this offset so the ship
 //                      stays centred when the device is flat.
@@ -23,7 +23,7 @@ void taskSensorPoll() {
 
   // Subtract calibration offset, then apply deadzone
   float raw = a.acceleration.y - calOffsetX;
-  accelX = (fabsf(raw) > TILT_DEADZONE) ? raw : 0.0f;
+  accelY = (fabsf(raw) > TILT_DEADZONE) ? raw : 0.0f;
 }
 
 // ──────────────────────────────────────────────────────────────────
