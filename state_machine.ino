@@ -1,102 +1,83 @@
 // ================================================================
 //  state_machine.ino — Game State Transitions
-//
-//  taskStateMachine() runs every 10ms.
-//  It polls PIN_B, consumes button flags, and drives all
-//  GameState transitions based on the current state and input.
-//
-//  State flow:
-//    HOME        + NAV press    → PLAYING
-//    PLAYING     + NAV press    → PAUSED
-//    PAUSED      + NAV press    → cycle pause menu cursor
-//    PAUSED      + POWER press  → confirm menu selection:
-//                                   Resume    → PLAYING
-//                                   Brightness→ cycle level (stay PAUSED)
-//                                   SwapBtn   → toggle swap (stay PAUSED)
-//                                   Quit      → HOME
-//    GAME_OVER   + NAV press    → HOME
-//    ANY         + POWER press  → doShutdown() (except in pause menu
-//                                 where POWER is the confirm button)
+//  NAV   = cycle cursor
+//  SHOOT = confirm / fire
 // ================================================================
 
 void taskStateMachine() {
-  // Poll PIN_B first so flagB is up-to-date this tick
-  pollPinB();
-
-  bool pwrPressed = consumePower();
-  bool navPressed = consumeNav();
+  pollNav();
+  bool shot    = consumeShoot();
+  bool nav     = consumeNav();
 
   switch (gameState) {
 
-    // ── HOME ──────────────────────────────────────────────────────
     case STATE_HOME:
-      if (pwrPressed) { doShutdown(); return; }
-      if (navPressed) {
-        initGame();
-        gameState = STATE_PLAYING;
-        Serial.println(F("[STATE] HOME -> PLAYING"));
-      }
-      break;
-
-    // ── PLAYING ──────────────────────────────────────────────────
-    case STATE_PLAYING:
-      if (pwrPressed) { doShutdown(); return; }
-      if (navPressed) {
-        pauseCursor = 0;
-        gameState   = STATE_PAUSED;
-        Serial.println(F("[STATE] PLAYING -> PAUSED"));
-      }
-      break;
-
-    // ── PAUSED — MENU ────────────────────────────────────────────
-    case STATE_PAUSED:
-      // NAV = move cursor down through menu items
-      if (navPressed) {
-        pauseCursor = (pauseCursor + 1) % PAUSE_ITEMS;
-      }
-      // POWER = confirm selected item
-      if (pwrPressed) {
-        switch (pauseCursor) {
-
-          case PAUSE_RESUME:
+      if (nav)  homeCursor = (homeCursor + 1) % HOME_ITEMS;
+      if (shot) {
+        switch (homeCursor) {
+          case HOME_START:
+            initGame();
             gameState = STATE_PLAYING;
-            Serial.println(F("[STATE] PAUSED -> PLAYING (Resume)"));
+            Serial.println(F("[STATE] HOME -> PLAYING"));
             break;
-
-          case PAUSE_BRIGHTNESS:
-            brightnessIdx = (brightnessIdx + 1) % BRIGHTNESS_LEVELS;
-            applyBrightness();
-            eepromSaveBrightness();
-            Serial.print(F("[BRIGHT] Level ")); Serial.println(brightnessIdx);
-            // Stay in pause menu so player can keep cycling
+          case HOME_SETTINGS:
+            settingsCursor = 0;
+            gameState = STATE_SETTINGS;
             break;
-
-          case PAUSE_SWAPBTN:
-            btnSwapped = !btnSwapped;
-            eepromSaveBtnSwap();
-            Serial.print(F("[BTN] Swapped: ")); Serial.println(btnSwapped);
-            // Stay in pause menu — label updates immediately
-            break;
-
-          case PAUSE_QUIT:
-            if (score > highScore) {
-              highScore = score;
-              eepromSaveHighScore();
-            }
-            gameState = STATE_HOME;
-            Serial.println(F("[STATE] PAUSED -> HOME (Quit)"));
+          case HOME_QUIT:
+            doShutdown();
             break;
         }
       }
       break;
 
-    // ── GAME OVER ────────────────────────────────────────────────
-    case STATE_GAME_OVER:
-      if (pwrPressed) { doShutdown(); return; }
-      if (navPressed) {
-        gameState = STATE_HOME;
-        Serial.println(F("[STATE] GAME_OVER -> HOME"));
+    case STATE_SETTINGS:
+      if (nav)  settingsCursor = (settingsCursor + 1) % SETTINGS_ITEMS;
+      if (shot) {
+        switch (settingsCursor) {
+          case SETTINGS_BRIGHTNESS:
+            brightnessIdx = (brightnessIdx + 1) % BRIGHTNESS_LEVELS;
+            applyBrightness();
+            eepromSaveBrightness();
+            break;
+          case SETTINGS_BTNSWAP:
+            btnSwapped = !btnSwapped;
+            eepromSaveBtnSwap();
+            break;
+          case SETTINGS_BACK:
+            gameState = STATE_HOME;
+            break;
+        }
       }
+      break;
+
+    case STATE_PLAYING:
+      if (nav) {
+        pauseCursor = 0;
+        gameState   = STATE_PAUSED;
+        Serial.println(F("[STATE] PLAYING -> PAUSED"));
+      }
+      // SHOOT is consumed directly in physics.ino for firing
+      break;
+
+    case STATE_PAUSED:
+      if (nav)  pauseCursor = (pauseCursor + 1) % PAUSE_ITEMS;
+      if (shot) {
+        switch (pauseCursor) {
+          case PAUSE_RESUME:
+            gameState = STATE_PLAYING;
+            break;
+          case PAUSE_QUIT:
+            if (score > highScore) { highScore = score; eepromSaveHighScore(); }
+            gameState = STATE_HOME;
+            homeCursor = 0;
+            break;
+        }
+      }
+      break;
+
+    case STATE_GAME_OVER:
+      if (shot) gameState = STATE_HOME;
       break;
   }
 }

@@ -38,10 +38,8 @@ void registerHit() {
   Serial.println(lives);
 
   if (lives == 0) {
-    if (score > highScore) {
-      highScore = score;
-      eepromSaveHighScore();
-    }
+    updateTopScores(score);
+    if (score > highScore) highScore = score;
     gameState = STATE_GAME_OVER;
     Serial.println(F("[STATE] PLAYING -> GAME_OVER"));
   }
@@ -76,7 +74,7 @@ void doShutdown() {
   Serial.flush();
 
   // PIN_A (GPIO13) wakes the device from deep sleep
-  esp_sleep_enable_ext0_wakeup((gpio_num_t)PIN_A, 0);
+  esp_sleep_enable_ext0_wakeup((gpio_num_t)PIN_NAV, 0);
   esp_deep_sleep_start();
 }
 
@@ -144,5 +142,21 @@ void eepromSaveBtnSwap() {
 void eepromSaveCalOffset() {
   EEPROM.put(EE_CALOFFSET_ADDR, calOffsetX);
   EEPROM.write(EE_CALMAG_ADDR, EE_CALMAG_VAL);
+  EEPROM.commit();
+}
+
+void updateTopScores(uint32_t newScore) {
+  if (newScore <= topScores[2]) return;
+  topScores[2] = newScore;
+  // Bubble sort the 3 entries
+  for (uint8_t i = 2; i > 0; i--) {
+    if (topScores[i] > topScores[i-1]) {
+      uint32_t t = topScores[i]; topScores[i] = topScores[i-1]; topScores[i-1] = t;
+    }
+  }
+  // Save all three to EEPROM
+  EEPROM.put(EE_HISCORE_ADDR, topScores[0]);
+  EEPROM.put(EE_HISCORE_ADDR + 4, topScores[1]);
+  EEPROM.put(EE_HISCORE_ADDR + 8, topScores[2]);
   EEPROM.commit();
 }

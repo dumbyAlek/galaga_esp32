@@ -18,6 +18,7 @@ void taskRender() {
 
   switch (gameState) {
     case STATE_HOME:      renderHome();                        break;
+    case STATE_SETTINGS:  renderSettings();                    break;
     case STATE_PLAYING:   renderPlaying();                     break;
     case STATE_PAUSED:    renderPlaying(); renderPauseMenu();  break;
     case STATE_GAME_OVER: renderGameOver();                    break;
@@ -58,29 +59,27 @@ void showSplash() {
 //  HOME SCREEN
 // ──────────────────────────────────────────────────────────────────
 void renderHome() {
-  // Top panel — title
-  vPrint( 0,  0, F("GA"),        2);
-  vPrint( 1,  1, F("GA"),        2);
-  vPrint( 20,  12, F("LA"),        2);
-  vPrint( 21,  13, F("LA"),        2);
-  vPrint( 40,  24, F("GA"),        2);
-  vPrint( 41,  25, F("GA"),        2);
-  vPrint( 0, 34, F("ESP32"), 1);
-  vDrawFastHLine(0, 48, VIRTUAL_W, SSD1306_WHITE);
-  vPrint( 0, 54, F("TILT=MOVE"), 1);
-  vPrint( 0, 66, F("AUTO=FIRE"), 1);
-  vPrint( 0, 78, F("NAV=PAUSE/"),1);
-  vPrint( 0, 90, F("MENU"), 1);
-  vDrawFastHLine(0, 104, VIRTUAL_W, SSD1306_WHITE);
+  // ── Top 3 high scores ──────────────────────────────────────────
+  vPrint(4,  4, F("TOP SCORES"), 1);
+  vDrawFastHLine(0, 14, VIRTUAL_W, SSD1306_WHITE);
 
-  // Bottom panel — high score + blinking prompt
-  vPrint( 0, 112, F("HIGH SCORE:"),   1);
-  vPrintUL(0, 124, highScore,          1);
-  vDrawFastHLine(0, 138, VIRTUAL_W, SSD1306_WHITE);
+  const char* medals[3] = {"1.", "2.", "3."};
+  for (uint8_t i = 0; i < 3; i++) {
+    vPrintStr(4,  18 + i * 14, medals[i], 1);
+    vPrintUL(20, 18 + i * 14, topScores[i], 1);
+  }
+  vDrawFastHLine(0, 62, VIRTUAL_W, SSD1306_WHITE);
 
-  if ((millis() / 500) % 2 == 0) {
-    vPrint(0, 148, F("> PRESS NAV <"), 1);
-    vPrint(0, 162, F(">  TO  START <"),1);
+  // ── Menu ───────────────────────────────────────────────────────
+  const uint8_t menuY = 70;
+  const uint8_t lineH = 18;
+  vPrint(4, menuY,              homeCursor==HOME_START    ? F(">START GAME") : F(" START GAME"), 1);
+  vPrint(4, menuY + lineH,      homeCursor==HOME_SETTINGS ? F(">SETTINGS")   : F(" SETTINGS"),   1);
+  vPrint(4, menuY + lineH*2,    homeCursor==HOME_QUIT     ? F(">QUIT")       : F(" QUIT"),       1);
+
+  // ── Blinking GALAGA title at bottom ────────────────────────────
+  if ((millis() / 600) % 2 == 0) {
+    vPrint(4, 230, F("GALAGA"), 2);
   }
 }
 
@@ -143,35 +142,12 @@ void renderPlaying() {
 //  Width 60px centred in 64px = X 2 to 62
 // ──────────────────────────────────────────────────────────────────
 void renderPauseMenu() {
-  vFillRect(1, 88, 62, 88, SSD1306_BLACK);
-  vDrawRect(1, 88, 62, 88, SSD1306_WHITE);
-
-  vPrint(6,  93, F("-- PAUSED --"),  1);
+  vFillRect(1, 88, 62, 54, SSD1306_BLACK);
+  vDrawRect(1, 88, 62, 54, SSD1306_WHITE);
+  vPrint(6,  93, F("-- PAUSED --"), 1);
   vDrawFastHLine(1, 104, 62, SSD1306_WHITE);
-
-  const uint8_t startY = 109;
-  const uint8_t lineH  = 18;
-
-  // Resume
-  vPrint(4, startY,
-         pauseCursor == PAUSE_RESUME ? F(">RESUME") : F(" RESUME"), 1);
-
-  // Brightness
-  char bBuf[12];
-  snprintf(bBuf, sizeof(bBuf), "%sBRI:%d/3",
-           pauseCursor == PAUSE_BRIGHTNESS ? ">" : " ", brightnessIdx);
-  vPrintStr(4, startY + lineH, bBuf, 1);
-
-  // Button swap
-  char sBuf[12];
-  snprintf(sBuf, sizeof(sBuf), "%sBTN:%s",
-           pauseCursor == PAUSE_SWAPBTN ? ">" : " ",
-           btnSwapped ? "SWAP" : "NORM");
-  vPrintStr(4, startY + lineH*2, sBuf, 1);
-
-  // Quit
-  vPrint(4, startY + lineH*3,
-         pauseCursor == PAUSE_QUIT ? F(">QUIT") : F(" QUIT"), 1);
+  vPrint(4, 112, pauseCursor==PAUSE_RESUME ? F(">RESUME") : F(" RESUME"), 1);
+  vPrint(4, 130, pauseCursor==PAUSE_QUIT   ? F(">QUIT")   : F(" QUIT"),   1);
 }
 
 // ──────────────────────────────────────────────────────────────────
@@ -197,4 +173,29 @@ void renderGameOver() {
   vDrawFastHLine(0, 140, VIRTUAL_W, SSD1306_WHITE);
   vPrint(2, 150, F("PRESS NAV"),    1);
   vPrint(6, 162, F("TO EXIT"),      1);
+}
+
+// ──────────────────────────────────────────────────────────────────
+//  SETTINGS
+// ──────────────────────────────────────────────────────────────────
+void renderSettings() {
+  vPrint(4,  4, F("SETTINGS"), 1);
+  vDrawFastHLine(0, 14, VIRTUAL_W, SSD1306_WHITE);
+
+  char bBuf[14];
+  snprintf(bBuf, sizeof(bBuf), "%sBRIGHT:%d/3",
+           settingsCursor==SETTINGS_BRIGHTNESS ? ">" : " ", brightnessIdx);
+  vPrintStr(4, 24, bBuf, 1);
+
+  char sBuf[14];
+  snprintf(sBuf, sizeof(sBuf), "%sBTN:%s",
+           settingsCursor==SETTINGS_BTNSWAP ? ">" : " ",
+           btnSwapped ? "SWAP" : "NORM");
+  vPrintStr(4, 42, sBuf, 1);
+
+  vPrint(4, 60, settingsCursor==SETTINGS_BACK ? F(">BACK") : F(" BACK"), 1);
+
+  vDrawFastHLine(0, 74, VIRTUAL_W, SSD1306_WHITE);
+  vPrint(4, 80, F("NAV=cycle"), 1);
+  vPrint(4, 92, F("SHOOT=select"), 1);
 }
