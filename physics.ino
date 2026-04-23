@@ -19,9 +19,11 @@ void taskPhysics() {
   uint32_t now = millis();
 
   // ── Ship movement ───────────────────────────────────────────────
-  // accelX (from sensors.ino) is negative when tilted right,
-  // positive when tilted left. Subtract to move in tilt direction.
-  shipX -= accelX * TILT_SCALE * SHIP_SPEED_MAX;
+  // accelY is negative when tilted left, positive when tilted right
+  float currentScale = (accelY < 0) ? TILT_SCALE_LEFT : TILT_SCALE_RIGHT;
+  
+  // Apply the direction-specific scale
+  shipX += accelY * currentScale * SHIP_SPEED_MAX;
   shipX  = constrain(shipX,
                      (float)SHIP_HALF_W,
                      (float)(VIRTUAL_W - SHIP_HALF_W));
