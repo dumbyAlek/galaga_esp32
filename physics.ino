@@ -1,0 +1,129 @@
+// ================================================================
+//  physics.ino — Game Physics & Player
+//
+//  taskPhysics()     : runs at ~62Hz during STATE_PLAYING.
+//                      Handles ship movement from tilt,
+//                      auto-fire timer, player bullet movement,
+//                      enemy bullet movement, and hit detection.
+//
+//  initGame()        : resets all game state for a new session.
+//  spawnPlayerBullet(): adds a bullet to the player pool.
+// ================================================================
+
+// ──────────────────────────────────────────────────────────────────
+//  TASK: PHYSICS  (~62 Hz)
+// ──────────────────────────────────────────────────────────────────
+void taskPhysics() {
+  if (gameState != STATE_PLAYING) return;
+
+  uint32_t now = millis();
+
+  // ── Ship movement ───────────────────────────────────────────────
+  // accelX (from sensors.ino) is negative when tilted right,
+  // positive when tilted left. Subtract to move in tilt direction.
+  shipX -= accelX * TILT_SCALE * SHIP_SPEED_MAX;
+  shipX  = constrain(shipX,
+                     (float)SHIP_HALF_W,
+                     (float)(VIRTUAL_W - SHIP_HALF_W));
+
+  // ── Auto-fire timer ─────────────────────────────────────────────
+  if ((now - lastAutoFire) >= AUTO_FIRE_MS) {
+    lastAutoFire = now;
+    spawnPlayerBullet();
+  }
+
+  // ── Player bullet movement + enemy collision ─────────────────────
+  for (uint8_t i = 0; i < MAX_BULLETS; i++) {
+    if (!playerBullets[i].active) continue;
+
+    playerBullets[i].y -= BULLET_SPEED;
+
+    // Off top of screen — deactivate
+    if (playerBullets[i].y < 0) {
+      playerBullets[i].active = false;
+      continue;
+    }
+
+    // Check against all alive enemies (enemies.ino data)
+    for (uint8_t r = 0; r < ENEMY_ROWS; r++) {
+      for (uint8_t c = 0; c < ENEMY_COLS; c++) {
+        if (!enemies[r][c].alive) continue;
+        if (fabsf(playerBullets[i].x - enemies[r][c].x) < 5 &&
+            fabsf(playerBullets[i].y - enemies[r][c].y) < 5) {
+          // Hit — handled by scoring.ino helper
+          enemies[r][c].alive     = false;
+          playerBullets[i].active = false;
+          registerKill();   // scoring.ino
+          goto next_bullet;
+        }
+      }
+    }
+    next_bullet:;
+  }
+
+  // ── Enemy fire timer (enemies.ino fires the actual bullet) ───────
+  if ((now - lastEnemyFire) >= ENEMY_FIRE_INTERVAL && enemiesAlive > 0) {
+    lastEnemyFire = now;
+    spawnEnemyBullet();   // enemies.ino
+  }
+
+  // ── Enemy bullet movement + player collision ──────────────────────
+  for (uint8_t i = 0; i < MAX_ENEMY_BULLETS; i++) {
+    if (!enemyBullets[i].active) continue;
+
+    enemyBullets[i].y += ENEMY_BULLET_SPEED;
+
+    // Off bottom of screen — deactivate
+    if (enemyBullets[i].y > VIRTUAL_H) {
+      enemyBullets[i].active = false;
+      continue;
+    }
+
+    // Hit player ship
+    if (fabsf(enemyBullets[i].x - shipX)  < (SHIP_HALF_W + 2) &&
+        fabsf(enemyBullets[i].y - SHIP_Y) < 6) {
+      enemyBullets[i].active = false;
+      registerHit();   // scoring.ino — decrements lives, checks game over
+    }
+  }
+
+  // ── Wave clear check ────────────────────────────────────────────
+  if (enemiesAlive == 0) {
+    resetEnemyGrid();   // enemies.ino
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────
+//  SPAWN PLAYER BULLET
+//  Finds the first inactive slot in the pool. If all slots are
+//  full, evicts slot 0 (oldest-first eviction policy).
+// ──────────────────────────────────────────────────────────────────
+void spawnPlayerBullet() {
+  for (uint8_t i = 0; i < MAX_BULLETS; i++) {
+    if (!playerBullets[i].active) {
+      playerBullets[i] = { shipX, (float)(SHIP_Y - 6), true };
+      return;
+    }
+  }
+  // Pool full — overwrite slot 0
+  playerBullets[0] = { shipX, (float)(SHIP_Y - 6), true };
+}
+
+// ──────────────────────────────────────────────────────────────────
+//  INIT GAME  (called from state_machine.ino on STATE_HOME → PLAYING)
+// ──────────────────────────────────────────────────────────────────
+void initGame() {
+  shipX = VIRTUAL_W / 2.0f;
+  lives = PLAYER_LIVES;
+  score = 0;
+
+  for (uint8_t i = 0; i < MAX_BULLETS;       i++) playerBullets[i].active = false;
+  for (uint8_t i = 0; i < MAX_ENEMY_BULLETS; i++) enemyBullets[i].active  = false;
+
+  lastAutoFire  = millis();
+  lastEnemyFire = millis();
+
+  resetEnemyGrid();   // enemies.ino
+
+  Serial.println(F("[GAME] New game started"));
+}
