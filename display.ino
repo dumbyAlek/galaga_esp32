@@ -1,38 +1,57 @@
 // ================================================================
-//  display.ino — Virtual MMU & Drawing Primitives
+//  display.ino — Segment-Based Display Paging & Drawing Primitives
 //
-//  Implements the Y-split virtual display layer.
-//  All game code draws using virtual coordinates (0–127 on both
-//  axes). These functions translate virtual Y to the correct
-//  physical display and local Y offset.
-//
-//  Virtual Y  0–63   → dispTop  (physical y = vY)
-//  Virtual Y  64–127 → dispBot  (physical y = vY − 64)
+//  Implements a segment-based virtual display layer.
+//  The virtual canvas (0–255 Y) is split into two segments:
+//    Segment 0: dispTop  (virtual Y 0–127)
+//    Segment 1: dispBot  (virtual Y 128–255)
+//  All game code draws using virtual coordinates (0–255 Y).
+//  These functions route drawing to the correct segment/display.
 // ================================================================
 
-// ── Page routing helpers ─────────────────────────────────────────
+// ── Segment routing helpers ─────────────────────────────────────
+enum DisplaySegment : uint8_t {
+  SEGMENT_TOP = 0,
+  SEGMENT_BOT = 1
+};
+
+inline DisplaySegment segmentForY(int16_t vy) {
+  return (vy < PAGE_BOUNDARY_Y) ? SEGMENT_TOP : SEGMENT_BOT;
+}
+
+inline Adafruit_SSD1306& displayForSegment(DisplaySegment seg) {
+  return (seg == SEGMENT_TOP) ? dispTop : dispBot;
+}
+
+inline int16_t segmentLocalY(int16_t vy) {
+  return (vy < PAGE_BOUNDARY_Y) ? vy : vy - PAGE_BOUNDARY_Y;
+}
+
+// For compatibility with existing code
 inline Adafruit_SSD1306& pageForY(int16_t vy) {
-  return (vy < PAGE_BOUNDARY_Y) ? dispTop : dispBot;
+  return displayForSegment(segmentForY(vy));
 }
 inline int16_t physY(int16_t vy) {
-  return (vy < PAGE_BOUNDARY_Y) ? vy : vy - PAGE_BOUNDARY_Y;
+  return segmentLocalY(vy);
 }
 
 // ── Pixel ────────────────────────────────────────────────────────
 void vDrawPixel(int16_t vx, int16_t vy, uint16_t c) {
   if (vx < 0 || vx >= VIRTUAL_W || vy < 0 || vy >= VIRTUAL_H) return;
-  pageForY(vy).drawPixel(vx, physY(vy), c);
+  DisplaySegment seg = segmentForY(vy);
+  displayForSegment(seg).drawPixel(vx, segmentLocalY(vy), c);
 }
 
 // ── Horizontal line — always within one page ─────────────────────
 void vDrawFastHLine(int16_t vx, int16_t vy, int16_t w, uint16_t c) {
   if (vy < 0 || vy >= VIRTUAL_H) return;
-  pageForY(vy).drawFastHLine(vx, physY(vy), w, c);
+  DisplaySegment seg = segmentForY(vy);
+  displayForSegment(seg).drawFastHLine(vx, segmentLocalY(vy), w, c);
 }
 
 // ── Vertical line — may cross Y=64 page boundary ─────────────────
 void vDrawFastVLine(int16_t vx, int16_t vy, int16_t h, uint16_t c) {
-  // Pixel-by-pixel so boundary crossing is handled automatically
+  // Pixel-by-pixel so segment crossing is handled automatically
   for (int16_t i = vy; i < vy + h; i++) vDrawPixel(vx, i, c);
 }
 
@@ -61,8 +80,8 @@ void vFillCircle(int16_t cx, int16_t cy, int16_t r, uint16_t c) {
 }
 
 // ── Filled triangle ──────────────────────────────────────────────
-//  Fast path when entirely within one page.
-//  Scanline rasteriser for shapes that cross Y=64.
+//  Fast path when entirely within one segment.
+//  Scanline rasteriser for shapes that cross Y=128.
 void vFillTriangle(int16_t x0, int16_t y0,
                    int16_t x1, int16_t y1,
                    int16_t x2, int16_t y2, uint16_t c) {
@@ -78,7 +97,7 @@ void vFillTriangle(int16_t x0, int16_t y0,
     dispBot.fillTriangle(x0, y0-pb, x1, y1-pb, x2, y2-pb, c);
     return;
   }
-  // Spans boundary — sort by Y then scanline rasterise
+  // Spans segment boundary — sort by Y then scanline rasterise
   if (y0>y1){int16_t tx=x0,ty=y0;x0=x1;y0=y1;x1=tx;y1=ty;}
   if (y0>y2){int16_t tx=x0,ty=y0;x0=x2;y0=y2;x2=tx;y2=ty;}
   if (y1>y2){int16_t tx=x1,ty=y1;x1=x2;y1=y2;x2=tx;y2=ty;}
@@ -99,25 +118,28 @@ void vFillTriangle(int16_t x0, int16_t y0,
 
 // ── Text helpers ─────────────────────────────────────────────────
 void vPrint(int16_t vx, int16_t vy, const __FlashStringHelper* str, uint8_t sz=1) {
-  Adafruit_SSD1306& d = pageForY(vy);
+  DisplaySegment seg = segmentForY(vy);
+  Adafruit_SSD1306& d = displayForSegment(seg);
   d.setTextSize(sz);
   d.setTextColor(SSD1306_WHITE);
-  d.setCursor(vx, physY(vy));
+  d.setCursor(vx, segmentLocalY(vy));
   d.print(str);
 }
 
 void vPrintStr(int16_t vx, int16_t vy, const char* str, uint8_t sz=1) {
-  Adafruit_SSD1306& d = pageForY(vy);
+  DisplaySegment seg = segmentForY(vy);
+  Adafruit_SSD1306& d = displayForSegment(seg);
   d.setTextSize(sz);
   d.setTextColor(SSD1306_WHITE);
-  d.setCursor(vx, physY(vy));
+  d.setCursor(vx, segmentLocalY(vy));
   d.print(str);
 }
 
 void vPrintUL(int16_t vx, int16_t vy, uint32_t v, uint8_t sz=1) {
-  Adafruit_SSD1306& d = pageForY(vy);
+  DisplaySegment seg = segmentForY(vy);
+  Adafruit_SSD1306& d = displayForSegment(seg);
   d.setTextSize(sz);
   d.setTextColor(SSD1306_WHITE);
-  d.setCursor(vx, physY(vy));
+  d.setCursor(vx, segmentLocalY(vy));
   d.print(v);
 }
