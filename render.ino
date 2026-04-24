@@ -87,6 +87,17 @@ void renderHome() {
 //  PLAYING SCENE
 // ──────────────────────────────────────────────────────────────────
 void renderPlaying() {
+
+  // ── Scrolling star field (forward movement illusion) ─────────────
+  for (uint8_t i = 0; i < NUM_STARS; i++) {
+    stars[i].y += stars[i].speed;
+    if (stars[i].y >= VIRTUAL_H) {
+      stars[i].y = 0;
+      stars[i].x = random(0, VIRTUAL_W);
+    }
+    vDrawPixel(stars[i].x, stars[i].y, SSD1306_WHITE);
+  }
+  
   // Score — very top
   vPrintUL(0, 0, score, 1);
 
@@ -105,6 +116,28 @@ void renderPlaying() {
       vDrawPixel(ex-2, ey+3, SSD1306_WHITE);
       vDrawPixel(ex+2, ey+3, SSD1306_WHITE);
     }
+  }
+
+  // ── Boss ─────────────────────────────────────────────────────────
+  if (bossActive) {
+    int16_t bx = (int16_t)bossX;
+    int16_t by = (int16_t)bossY;
+    // Big body
+    vDrawRect(bx - 8, by - 5, 17, 11, SSD1306_WHITE);
+    vDrawRect(bx - 6, by - 7,  13,  3, SSD1306_WHITE);
+    // Eyes
+    vDrawPixel(bx - 4, by - 1, SSD1306_WHITE);
+    vDrawPixel(bx - 4, by,     SSD1306_WHITE);
+    vDrawPixel(bx + 4, by - 1, SSD1306_WHITE);
+    vDrawPixel(bx + 4, by,     SSD1306_WHITE);
+    // Health bar below boss
+    vDrawRect(bx - 8, by + 8, 17, 3, SSD1306_WHITE);
+    uint8_t hpW = (uint8_t)(16.0f * bossHealth / 5);
+    vFillRect(bx - 8, by + 8, hpW, 3, SSD1306_WHITE);
+    // Wave label
+    char wBuf[8];
+    snprintf(wBuf, sizeof(wBuf), "W%d", waveNumber);
+    vPrintStr(0, 0, wBuf, 1);  // replaces score position during boss
   }
 
   // Player bullets — travel upward through full 256px height

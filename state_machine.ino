@@ -6,8 +6,8 @@
 
 void taskStateMachine() {
   pollNav();
-  bool shot    = consumeShoot();
-  bool nav     = consumeNav();
+  bool shot = (gameState != STATE_PLAYING) ? consumeShoot() : false;
+  bool nav  = consumeNav();
 
   switch (gameState) {
 

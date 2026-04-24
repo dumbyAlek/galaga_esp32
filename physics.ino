@@ -27,10 +27,17 @@ void taskPhysics() {
   shipX  = constrain(shipX,
                      (float)SHIP_HALF_W,
                      (float)(VIRTUAL_W - SHIP_HALF_W));
+  
+  // ── Manual fire — direct pin poll with rate limiter ───────────
+  // Polling PIN_SHOOT directly (not ISR flagA) allows:
+  // Tap: flagA set by ISR (catches presses < 16ms)
+  // Hold: digitalRead catches sustained press
+  bool tapped = flagA;
+  if (tapped) flagA = false;
 
-  // ── Manual fire — shoot button (flagA set by ISR in buttons.ino) ─
-  if (flagA) {
-    flagA = false;
+  if ((tapped || digitalRead(PIN_SHOOT) == LOW) &&
+      (now - lastShootTime) >= SHOOT_RATE_MS) {
+    lastShootTime = now;
     spawnPlayerBullet();
   }
 
@@ -55,12 +62,32 @@ void taskPhysics() {
           // Hit — handled by scoring.ino helper
           enemies[r][c].alive     = false;
           playerBullets[i].active = false;
+          enemiesAlive--;
           registerKill();   // scoring.ino
           goto next_bullet;
         }
       }
     }
     next_bullet:;
+  }
+
+  // ── Boss hit detection ───────────────────────────────────────────
+  if (bossActive) {
+    for (uint8_t i = 0; i < MAX_BULLETS; i++) {
+      if (!playerBullets[i].active) continue;
+      if (fabsf(playerBullets[i].x - bossX) < 10 &&
+          fabsf(playerBullets[i].y - bossY) < 10) {
+        playerBullets[i].active = false;
+        bossHealth--;
+        registerKill();   // +10 per hit
+        if (bossHealth == 0) {
+          bossActive = false;
+          score += 40;   // Bonus for killing boss
+          Serial.println(F("[BOSS] Defeated! +40 bonus"));
+          resetEnemyGrid();   // Back to normal after boss
+        }
+      }
+    }
   }
 
   // ── Enemy fire timer (enemies.ino fires the actual bullet) ───────
@@ -90,8 +117,13 @@ void taskPhysics() {
   }
 
   // ── Wave clear check ────────────────────────────────────────────
-  if (enemiesAlive == 0) {
-    resetEnemyGrid();   // enemies.ino
+  if (enemiesAlive == 0 && !bossActive) {
+    nextWave();   // enemies.ino — increments wave, spawns boss or grid
+  }
+
+  // ── Boss movement ────────────────────────────────────────────────
+  if (bossActive) {
+    updateBoss(now);
   }
 }
 
@@ -123,8 +155,17 @@ void initGame() {
   for (uint8_t i = 0; i < MAX_ENEMY_BULLETS; i++) enemyBullets[i].active  = false;
 
   lastEnemyFire = millis();
+  waveNumber    = 0;
+  bossActive    = false;
 
-  resetEnemyGrid();   // enemies.ino
+  // Init star field
+  for (uint8_t i = 0; i < NUM_STARS; i++) {
+    stars[i].x     = random(0, VIRTUAL_W);
+    stars[i].y     = random(0, VIRTUAL_H);
+    stars[i].speed = random(1, 4);
+  }
+
+  resetEnemyGrid();
 
   Serial.println(F("[GAME] New game started"));
 }

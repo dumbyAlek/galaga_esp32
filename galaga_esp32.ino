@@ -77,6 +77,22 @@ Enemy    enemies[ENEMY_ROWS][ENEMY_COLS];
 uint8_t  enemiesAlive = 0;
 
 uint32_t lastEnemyFire = 0;
+uint8_t  waveNumber    = 0;
+
+// ── Star field (forward-movement illusion) ────────────────────────
+#define NUM_STARS 10
+struct Star { int16_t x; int16_t y; uint8_t speed; };
+Star stars[NUM_STARS];
+
+// ── Boss ─────────────────────────────────────────────────────────
+bool    bossActive  = false;
+float   bossX       = VIRTUAL_W / 2.0f;
+float   bossY       = 20.0f;
+int8_t  bossDir     = 1;
+uint8_t bossHealth  = 0;
+uint32_t lastBossMove = 0;
+uint32_t lastBossFire = 0;
+uint32_t lastShootTime = 0;
 
 // ──────────────────────────────────────────────────────────────────
 //  BUTTON FLAGS  (written by buttons.ino ISR/poll)

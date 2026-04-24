@@ -64,3 +64,65 @@ void spawnEnemyBullet() {
     return;
   }
 }
+
+// ──────────────────────────────────────────────────────────────────
+//  NEXT WAVE
+//  Called when all enemies are cleared. Increments wave counter.
+//  Every 5th wave spawns a boss instead of the normal grid.
+// ──────────────────────────────────────────────────────────────────
+void nextWave() {
+  waveNumber++;
+  Serial.print(F("[WAVE] Wave ")); Serial.println(waveNumber);
+
+  // Clear all enemy bullets between waves
+  for (uint8_t i = 0; i < MAX_ENEMY_BULLETS; i++)
+    enemyBullets[i].active = false;
+
+  if (waveNumber % 5 == 0) {
+    // Boss wave
+    bossX      = VIRTUAL_W / 2.0f;
+    bossY      = 20.0f;
+    bossDir    = 1;
+    bossHealth = 5;
+    bossActive = true;
+    lastBossMove = millis();
+    lastBossFire = millis();
+    Serial.println(F("[BOSS] Boss spawned!"));
+  } else {
+    resetEnemyGrid();
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────
+//  UPDATE BOSS
+//  Moves side to side, fires frequently.
+//  Called every physics tick when bossActive is true.
+// ──────────────────────────────────────────────────────────────────
+void updateBoss(uint32_t now) {
+  // Side-to-side movement — faster each boss wave
+  uint32_t moveInterval = max(80UL, 200UL - (waveNumber / 5) * 20UL);
+  if ((now - lastBossMove) >= moveInterval) {
+    lastBossMove = now;
+    bossX += bossDir * 2;
+    if (bossX >= VIRTUAL_W - 8) bossDir = -1;
+    if (bossX <= 8)              bossDir =  1;
+  }
+
+  // Boss fires — interval shrinks with each boss wave
+  uint32_t fireInterval = max(400UL, 900UL - (waveNumber / 5) * 80UL);
+  if ((now - lastBossFire) >= fireInterval) {
+    lastBossFire = now;
+    // Fire 3 spread bullets
+    int16_t offsets[3] = { -5, 0, 5 };
+    uint8_t slot = 0;
+    for (uint8_t s = 0; s < 3; s++) {
+      while (slot < MAX_ENEMY_BULLETS && enemyBullets[slot].active) slot++;
+      if (slot >= MAX_ENEMY_BULLETS) break;
+      enemyBullets[slot] = { bossX + offsets[s], bossY + 10, true };
+      slot++;
+    }
+  }
+
+  // Boss bullet collision with player — handled in physics.ino
+  // Boss hit by player bullet — checked in physics.ino
+}

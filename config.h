@@ -39,7 +39,7 @@ const uint8_t BRIGHTNESS_VALUES[BRIGHTNESS_LEVELS] = { 10, 60, 150, 255 };
 #define MPU_ADDR            0x68
 #define TILT_DEADZONE       0.1f
 #define TILT_SCALE_LEFT     0.24f  // Adjust this for left sensitivity
-#define TILT_SCALE_RIGHT    0.38f  // Adjust this for right sensitivity 
+#define TILT_SCALE_RIGHT    0.42f  // Adjust this for right sensitivity 
 #define CAL_SAMPLES         50
 
 // ── Scheduler ────────────────────────────────────────────────────
@@ -63,9 +63,10 @@ const uint8_t BRIGHTNESS_VALUES[BRIGHTNESS_LEVELS] = { 10, 60, 150, 255 };
 #define SHIP_SPEED_MAX      2
 
 //  Bullets travel the full 256px height
-#define BULLET_SPEED        5
+#define BULLET_SPEED        8
+#define SHOOT_RATE_MS       150 
 #define BULLET_H            4
-#define MAX_BULLETS         4
+#define MAX_BULLETS         10
 #define ENEMY_BULLET_SPEED  3
 #define MAX_ENEMY_BULLETS   4
 
