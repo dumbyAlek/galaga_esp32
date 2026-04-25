@@ -70,15 +70,17 @@ const uint8_t BRIGHTNESS_VALUES[BRIGHTNESS_LEVELS] = { 10, 60, 150, 255 };
 #define ENEMY_BULLET_SPEED  3
 #define MAX_ENEMY_BULLETS   4
 
-//  Enemy grid — 5 cols x 4 rows, fits within 64px width
-//  Rightmost enemy centre: 4 + 4*11 = 48  +  half-width 4  = 52 < 64
-#define ENEMY_ROWS          4
-#define ENEMY_COLS          5
-#define ENEMY_ORIGIN_X      4
-#define ENEMY_ORIGIN_Y      10
-#define ENEMY_SPACING_X     11
-#define ENEMY_SPACING_Y     12
-#define ENEMY_FIRE_INTERVAL 1400
+#define MAX_ENEMIES         8           // Max simultaneous enemies on screen
+#define ENEMY_SPAWN_INTERVAL 1800       // ms between new enemy spawns
+#define ENEMY_FIRE_INTERVAL  3000
+#define ENEMY_DRIFT_SPEED    0.3f       // Enemies slowly drift downward
+#define ENEMY_MAX_Y          180        // If enemy reaches this Y, player loses a life
+
+// Stones — obstacles to dodge, cannot be shot
+#define MAX_STONES          5
+#define STONE_SPAWN_MS      2200        // ms between stone spawns
+#define STONE_SPEED_MIN     1
+#define STONE_SPEED_MAX     3
 
 #define PLAYER_LIVES        3
 #define SCORE_PER_KILL      10
@@ -90,14 +92,24 @@ const uint8_t BRIGHTNESS_VALUES[BRIGHTNESS_LEVELS] = { 10, 60, 150, 255 };
 //  Byte  6    : uint8_t   buttons swapped (0|1)
 //  Byte  7-10 : float     accelY calibration offset
 //  Byte  11   : uint8_t   cal magic (0xB6)
-#define EEPROM_SIZE         16
-#define EE_HISCORE_ADDR     0
-#define EE_MAGIC_ADDR       4
+// #define EEPROM_SIZE         16
+// #define EE_HISCORE_ADDR     0
+// #define EE_MAGIC_ADDR       4
+// #define EE_MAGIC_VAL        0xA5
+// #define EE_BRIGHTNESS_ADDR  5
+// #define EE_BTNSWAP_ADDR     6
+// #define EE_CALOFFSET_ADDR   7
+// #define EE_CALMAG_ADDR      11
+// #define EE_CALMAG_VAL       0xB6
+
+#define EEPROM_SIZE         32
+#define EE_HISCORE_ADDR     0   // Bytes 0-11 now reserved for the 3 scores
+#define EE_MAGIC_ADDR       12
 #define EE_MAGIC_VAL        0xA5
-#define EE_BRIGHTNESS_ADDR  5
-#define EE_BTNSWAP_ADDR     6
-#define EE_CALOFFSET_ADDR   7
-#define EE_CALMAG_ADDR      11
+#define EE_BRIGHTNESS_ADDR  13
+#define EE_BTNSWAP_ADDR     14
+#define EE_CALOFFSET_ADDR   15
+#define EE_CALMAG_ADDR      19
 #define EE_CALMAG_VAL       0xB6
 
 // ── Game States ──────────────────────────────────────────────────

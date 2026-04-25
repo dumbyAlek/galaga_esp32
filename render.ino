@@ -101,43 +101,129 @@ void renderPlaying() {
   // Score — very top
   vPrintUL(0, 0, score, 1);
 
-  // Enemy grid — top panel, Y 10 to ~62
-  for (uint8_t r = 0; r < ENEMY_ROWS; r++) {
-    for (uint8_t c = 0; c < ENEMY_COLS; c++) {
-      if (!enemies[r][c].alive) continue;
-      int16_t ex = (int16_t)enemies[r][c].x;
-      int16_t ey = (int16_t)enemies[r][c].y;
-      // Body
-      vDrawRect(ex-3, ey-2, 7, 5, SSD1306_WHITE);
-      // Antennae
-      vDrawPixel(ex-4, ey,   SSD1306_WHITE);
-      vDrawPixel(ex+4, ey,   SSD1306_WHITE);
-      // Legs
-      vDrawPixel(ex-2, ey+3, SSD1306_WHITE);
-      vDrawPixel(ex+2, ey+3, SSD1306_WHITE);
-    }
+  // Alien enemies — flat pool, random positions, drift downward
+  for (uint8_t e = 0; e < MAX_ENEMIES; e++) {
+    if (!enemies[e].alive) continue;
+    int16_t ex = (int16_t)enemies[e].x;
+    int16_t ey = (int16_t)enemies[e].y;
+    // Head (round)
+    vDrawPixel(ex-1, ey-5, SSD1306_WHITE);
+    vDrawPixel(ex,   ey-5, SSD1306_WHITE);
+    vDrawPixel(ex+1, ey-5, SSD1306_WHITE);
+    vDrawPixel(ex-2, ey-4, SSD1306_WHITE);
+    vDrawPixel(ex+2, ey-4, SSD1306_WHITE);
+    // Eyes inside head
+    vDrawPixel(ex-1, ey-4, SSD1306_WHITE);
+    vDrawPixel(ex+1, ey-4, SSD1306_WHITE);
+    // Antennae
+    vDrawPixel(ex-2, ey-7, SSD1306_WHITE);
+    vDrawPixel(ex+2, ey-7, SSD1306_WHITE);
+    vDrawPixel(ex-1, ey-6, SSD1306_WHITE);
+    vDrawPixel(ex+1, ey-6, SSD1306_WHITE);
+    // Body
+    vDrawRect(ex-3, ey-3, 7, 6, SSD1306_WHITE);
+    // Arms
+    vDrawPixel(ex-4, ey-2, SSD1306_WHITE);
+    vDrawPixel(ex+4, ey-2, SSD1306_WHITE);
+    // Legs
+    vDrawPixel(ex-4, ey+1, SSD1306_WHITE);
+    vDrawPixel(ex+4, ey+1, SSD1306_WHITE);
+    vDrawPixel(ex-3, ey+3, SSD1306_WHITE);
+    vDrawPixel(ex+3, ey+3, SSD1306_WHITE);
   }
 
-  // ── Boss ─────────────────────────────────────────────────────────
+  // Stones — irregular falling rocks
+  for (uint8_t i = 0; i < MAX_STONES; i++) {
+    if (!stones[i].active) continue;
+    int16_t sx = (int16_t)stones[i].x;
+    int16_t sy = (int16_t)stones[i].y;
+    uint8_t sw = stones[i].w;
+    uint8_t sh = stones[i].h;
+    // Draw as filled rect with clipped corners for rocky look
+    vFillRect(sx, sy, sw, sh, SSD1306_WHITE);
+    // Clip corners to make it look irregular
+    vDrawPixel(sx,      sy,      SSD1306_BLACK);
+    vDrawPixel(sx+sw-1, sy,      SSD1306_BLACK);
+    vDrawPixel(sx,      sy+sh-1, SSD1306_BLACK);
+    vDrawPixel(sx+sw-1, sy+sh-1, SSD1306_BLACK);
+  }
+
+  // ── Spider Boss ───────────────────────────────────────────────────
   if (bossActive) {
     int16_t bx = (int16_t)bossX;
     int16_t by = (int16_t)bossY;
-    // Big body
-    vDrawRect(bx - 8, by - 5, 17, 11, SSD1306_WHITE);
-    vDrawRect(bx - 6, by - 7,  13,  3, SSD1306_WHITE);
-    // Eyes
-    vDrawPixel(bx - 4, by - 1, SSD1306_WHITE);
-    vDrawPixel(bx - 4, by,     SSD1306_WHITE);
-    vDrawPixel(bx + 4, by - 1, SSD1306_WHITE);
-    vDrawPixel(bx + 4, by,     SSD1306_WHITE);
-    // Health bar below boss
-    vDrawRect(bx - 8, by + 8, 17, 3, SSD1306_WHITE);
-    uint8_t hpW = (uint8_t)(16.0f * bossHealth / 5);
-    vFillRect(bx - 8, by + 8, hpW, 3, SSD1306_WHITE);
-    // Wave label
+
+    // Head (round, sits above body)
+    vDrawPixel(bx-2, by-13, SSD1306_WHITE);
+    vDrawPixel(bx-1, by-14, SSD1306_WHITE);
+    vDrawPixel(bx,   by-14, SSD1306_WHITE);
+    vDrawPixel(bx+1, by-14, SSD1306_WHITE);
+    vDrawPixel(bx+2, by-13, SSD1306_WHITE);
+    vDrawPixel(bx-3, by-12, SSD1306_WHITE);
+    vDrawPixel(bx+3, by-12, SSD1306_WHITE);
+    vDrawPixel(bx-3, by-11, SSD1306_WHITE);
+    vDrawPixel(bx+3, by-11, SSD1306_WHITE);
+    vDrawPixel(bx-2, by-10, SSD1306_WHITE);
+    vDrawPixel(bx+2, by-10, SSD1306_WHITE);
+    // Eyes (2x2 blocks)
+    vFillRect(bx-2, by-13, 2, 2, SSD1306_WHITE);
+    vFillRect(bx+1, by-13, 2, 2, SSD1306_WHITE);
+    // Fangs
+    vDrawPixel(bx-1, by-9,  SSD1306_WHITE);
+    vDrawPixel(bx+1, by-9,  SSD1306_WHITE);
+
+    // Body (oval-ish with rect)
+    vFillRect(bx-7, by-8, 15, 14, SSD1306_WHITE);
+    // Body detail — clear centre for texture
+    vDrawPixel(bx,   by-4, SSD1306_BLACK);
+    vDrawPixel(bx,   by,   SSD1306_BLACK);
+    vDrawPixel(bx,   by+4, SSD1306_BLACK);
+
+    // 4 pairs of spider legs (radiating from sides)
+    // Left legs
+    vDrawPixel(bx-8,  by-7, SSD1306_WHITE);
+    vDrawPixel(bx-9,  by-8, SSD1306_WHITE);
+    vDrawPixel(bx-10, by-9, SSD1306_WHITE);
+
+    vDrawPixel(bx-8,  by-4, SSD1306_WHITE);
+    vDrawPixel(bx-10, by-4, SSD1306_WHITE);
+    vDrawPixel(bx-12, by-5, SSD1306_WHITE);
+
+    vDrawPixel(bx-8,  by,   SSD1306_WHITE);
+    vDrawPixel(bx-10, by+1, SSD1306_WHITE);
+    vDrawPixel(bx-12, by+2, SSD1306_WHITE);
+
+    vDrawPixel(bx-8,  by+4, SSD1306_WHITE);
+    vDrawPixel(bx-9,  by+6, SSD1306_WHITE);
+    vDrawPixel(bx-10, by+8, SSD1306_WHITE);
+
+    // Right legs
+    vDrawPixel(bx+8,  by-7, SSD1306_WHITE);
+    vDrawPixel(bx+9,  by-8, SSD1306_WHITE);
+    vDrawPixel(bx+10, by-9, SSD1306_WHITE);
+
+    vDrawPixel(bx+8,  by-4, SSD1306_WHITE);
+    vDrawPixel(bx+10, by-4, SSD1306_WHITE);
+    vDrawPixel(bx+12, by-5, SSD1306_WHITE);
+
+    vDrawPixel(bx+8,  by,   SSD1306_WHITE);
+    vDrawPixel(bx+10, by+1, SSD1306_WHITE);
+    vDrawPixel(bx+12, by+2, SSD1306_WHITE);
+
+    vDrawPixel(bx+8,  by+4, SSD1306_WHITE);
+    vDrawPixel(bx+9,  by+6, SSD1306_WHITE);
+    vDrawPixel(bx+10, by+8, SSD1306_WHITE);
+
+    // Health bar
+    uint8_t maxHP = 5 + (waveNumber / 5);
+    vDrawRect(bx-7, by+8, 15, 3, SSD1306_WHITE);
+    uint8_t hpW = (uint8_t)(14.0f * bossHealth / maxHP);
+    vFillRect(bx-7, by+8, hpW, 3, SSD1306_WHITE);
+
+    // Boss wave label
     char wBuf[8];
     snprintf(wBuf, sizeof(wBuf), "W%d", waveNumber);
-    vPrintStr(0, 0, wBuf, 1);  // replaces score position during boss
+    vPrintStr(0, 0, wBuf, 1);
   }
 
   // Player bullets — travel upward through full 256px height
