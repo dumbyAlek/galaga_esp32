@@ -53,19 +53,15 @@ void taskPhysics() {
       continue;
     }
 
-    // Check against all alive enemies (enemies.ino data)
-    for (uint8_t r = 0; r < ENEMY_ROWS; r++) {
-      for (uint8_t c = 0; c < ENEMY_COLS; c++) {
-        if (!enemies[r][c].alive) continue;
-        if (fabsf(playerBullets[i].x - enemies[r][c].x) < 5 &&
-            fabsf(playerBullets[i].y - enemies[r][c].y) < 5) {
-          // Hit — handled by scoring.ino helper
-          enemies[r][c].alive     = false;
-          playerBullets[i].active = false;
-          enemiesAlive--;
-          registerKill();   // scoring.ino
-          goto next_bullet;
-        }
+  for (uint8_t e = 0; e < MAX_ENEMIES; e++) {
+      if (!enemies[e].alive) continue;
+      if (fabsf(playerBullets[i].x - enemies[e].x) < 5 &&
+          fabsf(playerBullets[i].y - enemies[e].y) < 6) {
+        enemies[e].alive        = false;
+        playerBullets[i].active = false;
+        enemiesAlive--;
+        registerKill();
+        goto next_bullet;
       }
     }
     next_bullet:;
@@ -84,16 +80,54 @@ void taskPhysics() {
           bossActive = false;
           score += 40;   // Bonus for killing boss
           Serial.println(F("[BOSS] Defeated! +40 bonus"));
-          resetEnemyGrid();   // Back to normal after boss
+          spawnEnemyWave();
         }
       }
     }
   }
 
-  // ── Enemy fire timer (enemies.ino fires the actual bullet) ───────
+// ── Enemy drift downward ─────────────────────────────────────────
+  for (uint8_t e = 0; e < MAX_ENEMIES; e++) {
+    if (!enemies[e].alive) continue;
+    enemies[e].y += enemies[e].vy;
+    if (enemies[e].y > ENEMY_MAX_Y) {
+      // Enemy reached player zone — costs a life
+      enemies[e].alive = false;
+      enemiesAlive--;
+      registerHit();
+    }
+  }
+
+  // ── Periodic new enemy spawn (during non-boss waves) ─────────────
+  if (!bossActive && enemiesAlive < MAX_ENEMIES &&
+      (now - lastEnemySpawn) >= ENEMY_SPAWN_INTERVAL) {
+    lastEnemySpawn = now;
+    spawnEnemy();
+  }
+
+  // ── Enemy fire timer ──────────────────────────────────────────────
   if ((now - lastEnemyFire) >= ENEMY_FIRE_INTERVAL && enemiesAlive > 0) {
     lastEnemyFire = now;
-    spawnEnemyBullet();   // enemies.ino
+    spawnEnemyBullet();
+  }
+
+  // ── Stone spawning ────────────────────────────────────────────────
+  if ((now - lastStoneSpawn) >= STONE_SPAWN_MS) {
+    lastStoneSpawn = now;
+    spawnStone();
+  }
+
+  // ── Stone movement + player collision ─────────────────────────────
+  for (uint8_t i = 0; i < MAX_STONES; i++) {
+    if (!stones[i].active) continue;
+    stones[i].y += stones[i].vy;
+    if (stones[i].y > VIRTUAL_H) { stones[i].active = false; continue; }
+    // Hit player — dodge or lose a life
+    if (fabsf(stones[i].x - shipX)    < (SHIP_HALF_W + stones[i].w / 2) &&
+        fabsf(stones[i].y - SHIP_Y) < (stones[i].h + 4)) {
+      stones[i].active = false;
+      registerHit();
+    }
   }
 
   // ── Enemy bullet movement + player collision ──────────────────────
@@ -116,9 +150,10 @@ void taskPhysics() {
     }
   }
 
-  // ── Wave clear check ────────────────────────────────────────────
-  if (enemiesAlive == 0 && !bossActive) {
-    nextWave();   // enemies.ino — increments wave, spawns boss or grid
+  // Wave clear: no enemies alive AND pool has been seeded for a while
+  if (enemiesAlive == 0 && !bossActive &&
+      (now - lastEnemySpawn) > ENEMY_SPAWN_INTERVAL * 2) {
+    nextWave();
   }
 
   // ── Boss movement ────────────────────────────────────────────────
@@ -154,18 +189,21 @@ void initGame() {
   for (uint8_t i = 0; i < MAX_BULLETS;       i++) playerBullets[i].active = false;
   for (uint8_t i = 0; i < MAX_ENEMY_BULLETS; i++) enemyBullets[i].active  = false;
 
-  lastEnemyFire = millis();
-  waveNumber    = 0;
-  bossActive    = false;
+  lastEnemyFire  = millis();
+  lastEnemySpawn = millis();
+  lastStoneSpawn = millis() + 3000;   // Stones start 3s after game begins
+  waveNumber     = 0;
+  bossActive     = false;
 
-  // Init star field
+  for (uint8_t i = 0; i < MAX_STONES; i++) stones[i].active = false;
+
   for (uint8_t i = 0; i < NUM_STARS; i++) {
     stars[i].x     = random(0, VIRTUAL_W);
     stars[i].y     = random(0, VIRTUAL_H);
     stars[i].speed = random(1, 4);
   }
 
-  resetEnemyGrid();
+  spawnEnemyWave();
 
   Serial.println(F("[GAME] New game started"));
 }

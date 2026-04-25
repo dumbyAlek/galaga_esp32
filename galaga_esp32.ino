@@ -65,7 +65,8 @@ volatile float accelY = 0.0f;
 //  GAME DATA  (shared across physics.ino, enemies.ino, render.ino)
 // ──────────────────────────────────────────────────────────────────
 struct Bullet { float x, y; bool active; };
-struct Enemy  { float x, y; bool alive;  };
+struct Enemy  { float x, y, vy; bool alive; };   // vy = drift speed
+struct Stone  { float x, y, vy; uint8_t w, h; bool active; };
 
 float    shipX        = VIRTUAL_W / 2.0f;
 uint8_t  lives        = PLAYER_LIVES;
@@ -73,10 +74,14 @@ uint32_t score        = 0;
 
 Bullet   playerBullets[MAX_BULLETS];
 Bullet   enemyBullets[MAX_ENEMY_BULLETS];
-Enemy    enemies[ENEMY_ROWS][ENEMY_COLS];
-uint8_t  enemiesAlive = 0;
+Enemy    enemies[MAX_ENEMIES];             // flat pool, random positions
+Stone    stones[MAX_STONES];
+uint8_t  enemiesAlive   = 0;
 
-uint32_t lastEnemyFire = 0;
+uint32_t lastEnemyFire  = 0;
+uint32_t lastEnemySpawn = 0;
+uint32_t lastStoneSpawn = 0;
+
 uint8_t  waveNumber    = 0;
 
 // ── Star field (forward-movement illusion) ────────────────────────
@@ -172,10 +177,8 @@ void setup() {
   initButtons();
   Serial.println(F("[BTN]  Power=ISR(GPIO13)  Nav=POLLED(GPIO12)"));
 
-  // EEPROM + settings (scoring.ino)
+  // EEPROM + settings
   EEPROM.begin(EEPROM_SIZE);
-  EEPROM.write(EE_CALMAG_ADDR, 0x00);
-  EEPROM.commit();
   eepromLoad();
   applyBrightness();
 

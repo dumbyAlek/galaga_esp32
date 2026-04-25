@@ -85,12 +85,17 @@ void eepromLoad() {
   if (EEPROM.read(EE_MAGIC_ADDR) != EE_MAGIC_VAL) {
     // First ever boot — write defaults
     highScore     = 0;
+    topScores[0]  = 0; 
+    topScores[1]  = 0; 
+    topScores[2]  = 0;
     brightnessIdx = 2;
     btnSwapped    = false;
     calOffsetX    = 0.0f;
 
     EEPROM.write(EE_MAGIC_ADDR,    EE_MAGIC_VAL);
-    EEPROM.put(EE_HISCORE_ADDR,    highScore);
+    EEPROM.put(EE_HISCORE_ADDR,    topScores[0]);
+    EEPROM.put(EE_HISCORE_ADDR + 4, topScores[1]);
+    EEPROM.put(EE_HISCORE_ADDR + 8, topScores[2]);
     EEPROM.write(EE_BRIGHTNESS_ADDR, brightnessIdx);
     EEPROM.write(EE_BTNSWAP_ADDR,  (uint8_t)0);
     EEPROM.put(EE_CALOFFSET_ADDR,  calOffsetX);
@@ -101,7 +106,11 @@ void eepromLoad() {
   }
 
   // Normal boot — read saved values
-  EEPROM.get(EE_HISCORE_ADDR, highScore);
+  EEPROM.get(EE_HISCORE_ADDR, topScores[0]);
+  EEPROM.get(EE_HISCORE_ADDR + 4, topScores[1]);
+  EEPROM.get(EE_HISCORE_ADDR + 8, topScores[2]);
+  highScore = topScores[0];
+  
   brightnessIdx = EEPROM.read(EE_BRIGHTNESS_ADDR);
   btnSwapped    = (bool)EEPROM.read(EE_BTNSWAP_ADDR);
 
@@ -112,11 +121,6 @@ void eepromLoad() {
   if (EEPROM.read(EE_CALMAG_ADDR) == EE_CALMAG_VAL) {
     EEPROM.get(EE_CALOFFSET_ADDR, calOffsetX);
   }
-
-  Serial.print(F("[EEPROM] hi="));      Serial.print(highScore);
-  Serial.print(F("  bright="));         Serial.print(brightnessIdx);
-  Serial.print(F("  swap="));           Serial.print(btnSwapped);
-  Serial.print(F("  calOffset="));      Serial.println(calOffsetX);
 }
 
 // ──────────────────────────────────────────────────────────────────
