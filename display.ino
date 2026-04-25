@@ -10,11 +10,6 @@
 // ================================================================
 
 // ── Segment routing helpers ─────────────────────────────────────
-enum DisplaySegment : uint8_t {
-  SEGMENT_TOP = 0,
-  SEGMENT_BOT = 1
-};
-
 inline DisplaySegment segmentForY(int16_t vy) {
   return (vy < PAGE_BOUNDARY_Y) ? SEGMENT_TOP : SEGMENT_BOT;
 }
