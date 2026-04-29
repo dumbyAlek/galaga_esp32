@@ -98,6 +98,11 @@ void renderPlaying() {
     vDrawPixel(stars[i].x, stars[i].y, SSD1306_WHITE);
   }
   
+  // Highlight background for score
+  vFillRect(0, 0, 40, 8, SSD1306_BLACK); // Score bg
+  // Highlight background for lives
+  vFillRect(VIRTUAL_W - 20, 0, 20, 8, SSD1306_BLACK); // Lives bg
+
   // Score — very top (left side)
   vPrint(0, 0, F("SC:"), 1);
   vPrintUL(16, 0, score, 1);
