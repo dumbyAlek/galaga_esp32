@@ -1,14 +1,19 @@
 // ================================================================
-//  physics.ino — Game Physics & Player
+//  physics.ino — Game Physics & Player (OS MODIFIED)
 //
-//  taskPhysics()     : runs at ~62Hz during STATE_PLAYING.
-//                      Handles ship movement from tilt,
-//                      auto-fire timer, player bullet movement,
-//                      enemy bullet movement, and hit detection.
+//  taskPhysics()      : runs at ~62Hz during STATE_PLAYING.
+//                       Handles ship movement from tilt,
+//                       auto-fire timer, player bullet movement,
+//                       enemy bullet movement, and hit detection.
 //
-//  initGame()        : resets all game state for a new session.
+//  initGame()         : resets all game state for a new session.
 //  spawnPlayerBullet(): adds a bullet to the player pool.
 // ================================================================
+
+// [OS ADDITION]: buttons.ino theke Semaphore ta niye asha holo synchronization er jonno
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
+extern SemaphoreHandle_t shootSemaphore; 
 
 // ──────────────────────────────────────────────────────────────────
 //  TASK: PHYSICS  (~62 Hz)
@@ -28,12 +33,10 @@ void taskPhysics() {
                      (float)SHIP_HALF_W,
                      (float)(VIRTUAL_W - SHIP_HALF_W));
   
-  // ── Manual fire — direct pin poll with rate limiter ───────────
-  // Polling PIN_SHOOT directly (not ISR flagA) allows:
-  // Tap: flagA set by ISR (catches presses < 16ms)
-  // Hold: digitalRead catches sustained press
-  bool tapped = flagA;
-  if (tapped) flagA = false;
+  // ── Manual fire — [OS MODIFIED to use Semaphore] ───────────
+  // Aage ekhane flagA chilo, ekhon OS semaphore check korbe.
+  // Ete button press er response aro fast hobe.
+  bool tapped = (xSemaphoreTake(shootSemaphore, 0) == pdTRUE);
 
   if ((tapped || digitalRead(PIN_SHOOT) == LOW) &&
       (now - lastShootTime) >= SHOOT_RATE_MS) {
@@ -174,7 +177,7 @@ void spawnPlayerBullet() {
       return;
     }
   }
-  // Pool full — overwrite slot 0
+  // Pool full — overwrite slot 0 [OS CONCEPT: FIFO Page Replacement Policy er moto]
   playerBullets[0] = { shipX, (float)(SHIP_Y - 6), true };
 }
 
