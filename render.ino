@@ -98,8 +98,13 @@ void renderPlaying() {
     vDrawPixel(stars[i].x, stars[i].y, SSD1306_WHITE);
   }
   
-  // Score — very top
-  vPrintUL(0, 0, score, 1);
+  // Score — very top (left side)
+  vPrint(0, 0, F("SC:"), 1);
+  vPrintUL(16, 0, score, 1);
+
+  // Lives — very top (right side)
+  for (uint8_t i = 0; i < lives; i++)
+    vFillCircle(VIRTUAL_W - 4 - (i * 7), 2, 2, SSD1306_WHITE);
 
   // Alien enemies — flat pool, random positions, drift downward
   for (uint8_t e = 0; e < MAX_ENEMIES; e++) {
@@ -250,9 +255,9 @@ void renderPlaying() {
   vDrawPixel(sx - 1, SHIP_Y + 1, SSD1306_WHITE);
   vDrawPixel(sx + 1, SHIP_Y + 1, SSD1306_WHITE);
 
-  // Lives — bottom row, right-aligned
+  // Lives — very top (right side)
   for (uint8_t i = 0; i < lives; i++)
-    vFillCircle(VIRTUAL_W - 4 - (i * 7), VIRTUAL_H - 3, 2, SSD1306_WHITE);
+    vFillCircle(VIRTUAL_W - 4 - (i * 7), 2, 2, SSD1306_WHITE);
 }
 
 // ──────────────────────────────────────────────────────────────────
