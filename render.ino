@@ -240,10 +240,10 @@ void renderPlaying() {
     uint8_t hpW = (uint8_t)(14.0f * bossHealth / maxHP);
     vFillRect(bx-7, by+8, hpW, 3, SSD1306_WHITE);
 
-    // Boss wave label
+    // Boss wave label (moved to avoid overwriting score)
     char wBuf[8];
     snprintf(wBuf, sizeof(wBuf), "W%d", waveNumber);
-    vPrintStr(0, 0, wBuf, 1);
+    vPrintStr(50, 0, wBuf, 1);
   }
 
   // Player bullets — travel upward through full 256px height
@@ -269,10 +269,6 @@ void renderPlaying() {
                 SSD1306_WHITE);
   vDrawPixel(sx - 1, SHIP_Y + 1, SSD1306_WHITE);
   vDrawPixel(sx + 1, SHIP_Y + 1, SSD1306_WHITE);
-
-  // Lives — very top (right side)
-  for (uint8_t i = 0; i < lives; i++)
-    vFillCircle(VIRTUAL_W - 4 - (i * 7), 2, 2, SSD1306_WHITE);
 }
 
 // ──────────────────────────────────────────────────────────────────
