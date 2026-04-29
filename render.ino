@@ -102,9 +102,24 @@ void renderPlaying() {
   vPrint(0, 0, F("SC:"), 1);
   vPrintUL(16, 0, score, 1);
 
-  // Lives — very top (right side)
-  for (uint8_t i = 0; i < lives; i++)
-    vFillCircle(VIRTUAL_W - 4 - (i * 7), 2, 2, SSD1306_WHITE);
+  // Lives — very top (right side) as hearts
+  for (uint8_t i = 0; i < lives; i++) {
+    uint8_t hx = VIRTUAL_W - 6 - (i * 7);
+    // Draw heart shape (5x5 pixels)
+    vDrawPixel(hx,   0, SSD1306_WHITE);
+    vDrawPixel(hx+2, 0, SSD1306_WHITE);
+    vDrawPixel(hx+1, 1, SSD1306_WHITE);
+    vDrawPixel(hx+3, 1, SSD1306_WHITE);
+    vDrawPixel(hx,   2, SSD1306_WHITE);
+    vDrawPixel(hx+1, 2, SSD1306_WHITE);
+    vDrawPixel(hx+2, 2, SSD1306_WHITE);
+    vDrawPixel(hx+3, 2, SSD1306_WHITE);
+    vDrawPixel(hx+4, 2, SSD1306_WHITE);
+    vDrawPixel(hx+1, 3, SSD1306_WHITE);
+    vDrawPixel(hx+2, 3, SSD1306_WHITE);
+    vDrawPixel(hx+3, 3, SSD1306_WHITE);
+    vDrawPixel(hx+2, 4, SSD1306_WHITE);
+  }
 
   // Alien enemies — flat pool, random positions, drift downward
   for (uint8_t e = 0; e < MAX_ENEMIES; e++) {
