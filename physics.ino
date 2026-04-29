@@ -80,6 +80,7 @@ void taskPhysics() {
         bossHealth--;
         registerKill();   // +10 per hit
         if (bossHealth == 0) {
+          bossesKilled++;
           bossActive = false;
           score += 40;   // Bonus for killing boss
           Serial.println(F("[BOSS] Defeated! +40 bonus"));
@@ -188,6 +189,8 @@ void initGame() {
   shipX = VIRTUAL_W / 2.0f;
   lives = PLAYER_LIVES;
   score = 0;
+  cyclesPassed = 0;
+  bossesKilled = 0;
 
   for (uint8_t i = 0; i < MAX_BULLETS;       i++) playerBullets[i].active = false;
   for (uint8_t i = 0; i < MAX_ENEMY_BULLETS; i++) enemyBullets[i].active  = false;

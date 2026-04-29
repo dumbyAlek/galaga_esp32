@@ -9,7 +9,7 @@ void spawnEnemy() {
   for (uint8_t i = 0; i < MAX_ENEMIES; i++) {
     if (!enemies[i].alive) {
       enemies[i].x     = random(5, VIRTUAL_W - 5);
-      enemies[i].y     = random(8, 50);    // Appear in top region
+      enemies[i].y     = random(40, 60);    // Appear in top region
       enemies[i].vy    = ENEMY_DRIFT_SPEED + (waveNumber * 0.05f);
       enemies[i].alive = true;
       enemiesAlive++;
@@ -74,6 +74,7 @@ void spawnEnemyBullet() {
 // ──────────────────────────────────────────────────────────────────
 void nextWave() {
   waveNumber++;
+  cyclesPassed++;
   Serial.print(F("[WAVE] ")); Serial.println(waveNumber);
 
   for (uint8_t i = 0; i < MAX_ENEMY_BULLETS; i++) enemyBullets[i].active = false;
@@ -83,7 +84,7 @@ void nextWave() {
     for (uint8_t i = 0; i < MAX_ENEMIES; i++) enemies[i].alive = false;
     enemiesAlive = 0;
     bossX      = VIRTUAL_W / 2.0f;
-    bossY      = 20.0f;
+    bossY      = 52.0f;
     bossDir    = 1;
     bossHealth = 5 + (waveNumber / 5);   // More HP each boss cycle
     bossActive = true;

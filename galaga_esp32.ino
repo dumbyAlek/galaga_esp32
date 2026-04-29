@@ -71,6 +71,8 @@ struct Stone  { float x, y, vy; uint8_t w, h; bool active; };
 float    shipX        = VIRTUAL_W / 2.0f;
 uint8_t  lives        = PLAYER_LIVES;
 uint32_t score        = 0;
+uint16_t cyclesPassed = 0;
+uint16_t bossesKilled = 0;
 
 Bullet   playerBullets[MAX_BULLETS];
 Bullet   enemyBullets[MAX_ENEMY_BULLETS];
