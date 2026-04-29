@@ -32,6 +32,20 @@
 #include <EEPROM.h>
 #include "config.h"
 
+// [OS ADDITION]: FreeRTOS er library gula add kora holo task scheduling ar mutex er jonno
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/semphr.h"
+
+// [OS CONCEPT - MUTEX]: i2cMutex add kora holo jate Core 0 ar Core 1 eksathe display ba sensor e data pathate giye crash na kore. (Mutual Exclusion)
+SemaphoreHandle_t i2cMutex; 
+
+// [OS ADDITION]: FreeRTOS Task er handle gula declare kora holo
+TaskHandle_t TaskPhysicsHandle;
+TaskHandle_t TaskRenderHandle;
+TaskHandle_t TaskSensorHandle;
+TaskHandle_t TaskStateHandle;
+
 // ──────────────────────────────────────────────────────────────────
 //  PERIPHERAL OBJECTS  (used across display.ino, render.ino, etc.)
 // ──────────────────────────────────────────────────────────────────
@@ -106,12 +120,8 @@ volatile bool flagA = false;
 bool          flagB = false;
 
 // ──────────────────────────────────────────────────────────────────
-//  ROUND-ROBIN TASK SCHEDULER
-//  Each entry holds a timestamp and interval. The dispatcher fires
-//  any task whose interval has elapsed since its last run.
+//  EXTERNAL FUNCTION DECLARATIONS
 // ──────────────────────────────────────────────────────────────────
-struct Task { uint32_t lastRun; uint32_t interval; void(*fn)(); };
-
 // Function pointers declared here; implementations live in
 // their respective .ino files.
 void taskStateMachine();   // state_machine.ino
@@ -119,13 +129,49 @@ void taskSensorPoll();     // sensors.ino
 void taskPhysics();        // physics.ino
 void taskRender();         // render.ino
 
-Task scheduler[] = {
-  { 0, SCHED_STATE_MS,   taskStateMachine },
-  { 0, SCHED_SENSOR_MS,  taskSensorPoll   },
-  { 0, SCHED_PHYSICS_MS, taskPhysics      },
-  { 0, SCHED_RENDER_MS,  taskRender       },
-};
-const uint8_t NUM_TASKS = sizeof(scheduler) / sizeof(Task);
+// [REMOVED]: Ager custom round-robin scheduler array (scheduler[]) ta ekhane chilo, sheta delete kore deya hoyeche karon amra ekhon OS er FreeRTOS scheduler use korbo.
+
+// ──────────────────────────────────────────────────────────────────
+//  [OS MODIFICATION]: FREE-RTOS TASK WRAPPERS
+//  Ager function guloke ekhon FreeRTOS Task Wrapper er vitor deya holo.
+//  Prati ta task ekhon alada vabe infinite loop (while(true)) e cholbe.
+// ──────────────────────────────────────────────────────────────────
+
+void vTaskState(void *pvParameters) {
+  while (true) {
+    taskStateMachine(); 
+    vTaskDelay(pdMS_TO_TICKS(SCHED_STATE_MS)); // CPU ke rest deya hocche
+  }
+}
+
+void vTaskSensor(void *pvParameters) {
+  while (true) {
+    // [OS CONCEPT - MUTEX]: Sensor I2C bus use korar aage Mutex take kora hocche
+    if (xSemaphoreTake(i2cMutex, portMAX_DELAY) == pdTRUE) {
+      taskSensorPoll(); 
+      xSemaphoreGive(i2cMutex); // Kaj shesh, bus free kora holo
+    }
+    vTaskDelay(pdMS_TO_TICKS(SCHED_SENSOR_MS));
+  }
+}
+
+void vTaskPhysics(void *pvParameters) {
+  while (true) {
+    taskPhysics(); 
+    vTaskDelay(pdMS_TO_TICKS(SCHED_PHYSICS_MS));
+  }
+}
+
+void vTaskRender(void *pvParameters) {
+  while (true) {
+    // [OS CONCEPT - MUTEX]: Display I2C bus use korar aage Mutex take kora hocche
+    if (xSemaphoreTake(i2cMutex, portMAX_DELAY) == pdTRUE) {
+      taskRender(); 
+      xSemaphoreGive(i2cMutex); // Kaj shesh, bus free kora holo
+    }
+    vTaskDelay(pdMS_TO_TICKS(SCHED_RENDER_MS));
+  }
+}
 
 // ──────────────────────────────────────────────────────────────────
 //  SETUP
@@ -159,10 +205,6 @@ void setup() {
   dispBot.setTextWrap(false);
   Serial.println(F("[DISP] Bottom OK (0x3D)  portrait  vY 128-255"));
 
-  // // Rotate both displays 180 degrees
-  // dispTop.setRotation(2);
-  // dispBot.setRotation(2);
-
   // MPU-6050
   if (!mpu.begin()) {
     Serial.println(F("[HALT] MPU-6050 not found (0x68)"));
@@ -192,17 +234,32 @@ void setup() {
 
   gameState = STATE_HOME;
   Serial.println(F("[BOOT] Ready — STATE_HOME\n"));
+
+  // ──────────────────────────────────────────────────────────────────
+  //  [OS CONCEPT - MULTIPROCESSING / SCHEDULING INITIALIZATION]
+  //  Ekhane amra ESP32 er duita core e task gula vag kore dicchi.
+  // ──────────────────────────────────────────────────────────────────
+  
+  // Mutex toiri kora hocche
+  i2cMutex = xSemaphoreCreateMutex();
+
+  // Core 0: Ekhane shudhu heavy Graphics Render hobe.
+  xTaskCreatePinnedToCore(vTaskRender, "RenderTask", 4096, NULL, 1, &TaskRenderHandle, 0);
+
+  // Core 1: Ekhane Game Logic, Physics, ar Sensor er kaj hobe karon ekhane fast response lagbe.
+  xTaskCreatePinnedToCore(vTaskPhysics, "PhysicsTask", 4096, NULL, 2, &TaskPhysicsHandle, 1);
+  xTaskCreatePinnedToCore(vTaskSensor,  "SensorTask",  2048, NULL, 3, &TaskSensorHandle,  1);
+  xTaskCreatePinnedToCore(vTaskState,   "StateTask",   2048, NULL, 1, &TaskStateHandle,   1);
+  
+  Serial.println(F("[OS] FreeRTOS Task Scheduling & Mutex Initialized on Dual Cores"));
 }
 
 // ──────────────────────────────────────────────────────────────────
-//  MAIN LOOP — Round-Robin Dispatcher
+//  MAIN LOOP
 // ──────────────────────────────────────────────────────────────────
 void loop() {
-  uint32_t now = millis();
-  for (uint8_t i = 0; i < NUM_TASKS; i++) {
-    if ((now - scheduler[i].lastRun) >= scheduler[i].interval) {
-      scheduler[i].lastRun = now;
-      scheduler[i].fn();
-    }
-  }
+  // [OS MODIFICATION]: Ager loop e array theke task run kora hoto.
+  // Ekhon FreeRTOS background e task scheduling korche, tai ai default loop tar ar dorkar nai.
+  // Memory bachanar jonno OS ke bole eita delete kore deya holo.
+  vTaskDelete(NULL); 
 }
