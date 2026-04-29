@@ -20,10 +20,13 @@ void taskPhysics() {
 
   // ── Ship movement ───────────────────────────────────────────────
   // accelY is negative when tilted left, positive when tilted right
-  float currentScale = (accelY < 0) ? TILT_SCALE_LEFT : TILT_SCALE_RIGHT;
-  
-  // Apply the direction-specific scale
-  shipX += accelY * currentScale * SHIP_SPEED_MAX;
+  // Critical section — reading accelY written by taskSensorPoll
+  acquireMutex(mtxAccel);
+  float localAccel = accelY;
+  releaseMutex(mtxAccel);
+
+  float currentScale = (localAccel < 0) ? TILT_SCALE_LEFT : TILT_SCALE_RIGHT;
+  shipX += localAccel * currentScale * SHIP_SPEED_MAX;
   shipX  = constrain(shipX,
                      (float)SHIP_HALF_W,
                      (float)(VIRTUAL_W - SHIP_HALF_W));

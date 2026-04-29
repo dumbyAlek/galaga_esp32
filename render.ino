@@ -99,7 +99,10 @@ void renderPlaying() {
   }
   
   // Score — very top
-  vPrintUL(0, 0, score, 1);
+  acquireMutex(mtxScore);
+  uint32_t localScore = score; // Critical Section: Score
+  releaseMutex(mtxScore);
+  vPrintUL(0, 0, localScore, 1);
 
   // Alien enemies — flat pool, random positions, drift downward
   for (uint8_t e = 0; e < MAX_ENEMIES; e++) {
@@ -133,7 +136,10 @@ void renderPlaying() {
   }
 
   // Stones — irregular falling rocks
-  for (uint8_t i = 0; i < MAX_STONES; i++) {
+  acquireMutex(mtxLives);
+  uint8_t localLives = lives; // Critical Section: Lives and Rocks
+  releaseMutex(mtxLives);
+  for (uint8_t i = 0; i < localLives; i++) {
     if (!stones[i].active) continue;
     int16_t sx = (int16_t)stones[i].x;
     int16_t sy = (int16_t)stones[i].y;

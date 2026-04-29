@@ -21,7 +21,9 @@
 //  SCORE — KILL REGISTERED  (called from physics.ino)
 // ──────────────────────────────────────────────────────────────────
 void registerKill() {
+  acquireMutex(mtxScore);   // Critical section: score
   score += SCORE_PER_KILL;
+  releaseMutex(mtxScore);
   Serial.print(F("[SCORE] Kill +"));
   Serial.print(SCORE_PER_KILL);
   Serial.print(F("  total="));
@@ -32,7 +34,9 @@ void registerKill() {
 //  LIVES — PLAYER HIT  (called from physics.ino)
 // ──────────────────────────────────────────────────────────────────
 void registerHit() {
+  acquireMutex(mtxLives);   // Critical section: lives
   if (lives > 0) lives--;
+  releaseMutex(mtxLives);
 
   Serial.print(F("[LIVES] Hit! lives="));
   Serial.println(lives);
@@ -40,7 +44,9 @@ void registerHit() {
   if (lives == 0) {
     updateTopScores(score);
     if (score > highScore) highScore = score;
-    gameState = STATE_GAME_OVER;
+    acquireMutex(mtxGameState);
+    gameState = STATE_GAME_OVER;  // Critical section: Game Over
+    releaseMutex(mtxGameState);
     Serial.println(F("[STATE] PLAYING -> GAME_OVER"));
   }
 }

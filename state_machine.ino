@@ -16,8 +16,10 @@ void taskStateMachine() {
       if (shot) {
         switch (homeCursor) {
           case HOME_START:
-            initGame();
-            gameState = STATE_PLAYING;
+          initGame();
+          acquireMutex(mtxGameState);
+          gameState = STATE_PLAYING; // Critical Section: Playing State
+          releaseMutex(mtxGameState);
             Serial.println(F("[STATE] HOME -> PLAYING"));
             break;
           case HOME_SETTINGS:

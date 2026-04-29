@@ -105,6 +105,38 @@ uint32_t lastShootTime = 0;
 volatile bool flagA = false;
 bool          flagB = false;
 
+// ================================================================
+//  MUTEX LOCKS — Process Synchronization (Silberschatz Ch.6)
+//
+//  Implements the mutex lock pattern from the textbook:
+//    acquireMutex() = acquire() — busy-wait spinlock
+//    releaseMutex() = release() — set lock free
+//
+//  Each shared variable accessed by multiple tasks gets its
+//  own mutex to protect its critical section.
+//  On ESP32 single-core Xtensa LX6, the primary real risk is
+//  ISR context vs main-loop tasks — volatile bool writes are
+//  atomic on this architecture, making this a valid spinlock.
+// ================================================================
+struct Mutex {
+  volatile bool lock = false;
+};
+
+void acquireMutex(Mutex& m) {
+  while (m.lock);   // Entry section: busy-wait (spinlock)
+  m.lock = true;    // Acquire
+}
+
+void releaseMutex(Mutex& m) {
+  m.lock = false;   // Exit section: release
+}
+
+// One mutex per shared resource
+Mutex mtxAccel;      // Protects: accelY
+Mutex mtxScore;      // Protects: score
+Mutex mtxLives;      // Protects: lives
+Mutex mtxGameState;  // Protects: gameState
+
 // ──────────────────────────────────────────────────────────────────
 //  ROUND-ROBIN TASK SCHEDULER
 //  Each entry holds a timestamp and interval. The dispatcher fires
