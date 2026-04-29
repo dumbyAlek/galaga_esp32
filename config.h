@@ -1,3 +1,9 @@
+// ── Display Segments ───────────────────────────────────────────
+enum DisplaySegment : uint8_t {
+  SEGMENT_TOP = 0,
+  SEGMENT_BOT = 1
+};
+
 #pragma once
 
 // ================================================================
