@@ -98,32 +98,32 @@ void renderPlaying() {
     vDrawPixel(stars[i].x, stars[i].y, SSD1306_WHITE);
   }
   
-  // Highlight background for score
-  vFillRect(0, 0, 40, 8, SSD1306_BLACK); // Score bg
-  // Highlight background for lives
-  vFillRect(VIRTUAL_W - 20, 0, 20, 8, SSD1306_BLACK); // Lives bg
+  // Highlight background for score (white bg, black text)
+  vFillRect(0, 0, 40, 8, SSD1306_WHITE); // Score bg
+  // Highlight background for lives (white bg)
+  vFillRect(VIRTUAL_W - 20, 0, 20, 8, SSD1306_WHITE); // Lives bg
 
   // Score — very top (left side)
-  vPrint(0, 0, F("SC:"), 1);
-  vPrintUL(16, 0, score, 1);
+  vPrint(0, 0, F("SC:"), 1, SSD1306_BLACK, SSD1306_WHITE);
+  vPrintUL(16, 0, score, 1, SSD1306_BLACK, SSD1306_WHITE);
 
-  // Lives — very top (right side) as hearts
+  // Lives — very top (right side) as black hearts
   for (uint8_t i = 0; i < lives; i++) {
     uint8_t hx = VIRTUAL_W - 6 - (i * 7);
-    // Draw heart shape (5x5 pixels)
-    vDrawPixel(hx,   0, SSD1306_WHITE);
-    vDrawPixel(hx+2, 0, SSD1306_WHITE);
-    vDrawPixel(hx+1, 1, SSD1306_WHITE);
-    vDrawPixel(hx+3, 1, SSD1306_WHITE);
-    vDrawPixel(hx,   2, SSD1306_WHITE);
-    vDrawPixel(hx+1, 2, SSD1306_WHITE);
-    vDrawPixel(hx+2, 2, SSD1306_WHITE);
-    vDrawPixel(hx+3, 2, SSD1306_WHITE);
-    vDrawPixel(hx+4, 2, SSD1306_WHITE);
-    vDrawPixel(hx+1, 3, SSD1306_WHITE);
-    vDrawPixel(hx+2, 3, SSD1306_WHITE);
-    vDrawPixel(hx+3, 3, SSD1306_WHITE);
-    vDrawPixel(hx+2, 4, SSD1306_WHITE);
+    // Draw heart shape (5x5 pixels) in black
+    vDrawPixel(hx,   0, SSD1306_BLACK);
+    vDrawPixel(hx+2, 0, SSD1306_BLACK);
+    vDrawPixel(hx+1, 1, SSD1306_BLACK);
+    vDrawPixel(hx+3, 1, SSD1306_BLACK);
+    vDrawPixel(hx,   2, SSD1306_BLACK);
+    vDrawPixel(hx+1, 2, SSD1306_BLACK);
+    vDrawPixel(hx+2, 2, SSD1306_BLACK);
+    vDrawPixel(hx+3, 2, SSD1306_BLACK);
+    vDrawPixel(hx+4, 2, SSD1306_BLACK);
+    vDrawPixel(hx+1, 3, SSD1306_BLACK);
+    vDrawPixel(hx+2, 3, SSD1306_BLACK);
+    vDrawPixel(hx+3, 3, SSD1306_BLACK);
+    vDrawPixel(hx+2, 4, SSD1306_BLACK);
   }
 
   // Alien enemies — flat pool, random positions, drift downward
