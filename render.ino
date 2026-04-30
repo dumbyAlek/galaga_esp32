@@ -265,15 +265,11 @@ void renderPlaying() {
     vDrawPixel(bx+10, by+8, SSD1306_WHITE);
 
     // Health bar
-    uint8_t maxHP = 5 + (waveNumber / 5);
+    uint8_t maxHP = 15 + (waveNumber / 5);
     vDrawRect(bx-7, by+8, 15, 3, SSD1306_WHITE);
     uint8_t hpW = (uint8_t)(14.0f * bossHealth / maxHP);
     vFillRect(bx-7, by+8, hpW, 3, SSD1306_WHITE);
 
-    // Boss wave label
-    char wBuf[8];
-    snprintf(wBuf, sizeof(wBuf), "W%d", waveNumber);
-    vPrintStr(0, 0, wBuf, 1);
   }
 
   // Player bullets — travel upward through full 256px height

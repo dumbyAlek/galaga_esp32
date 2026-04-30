@@ -22,17 +22,22 @@ void spawnEnemy() {
 //  SPAWN WAVE — called on new game or wave clear
 //  Fills pool with a burst of enemies
 // ──────────────────────────────────────────────────────────────────
+// ──────────────────────────────────────────────────────────────────
+//  SPAWN WAVE — called on new game or wave clear
+//  Empties the field so taskPhysics can trickle them in
+// ──────────────────────────────────────────────────────────────────
 void spawnEnemyWave() {
   // Clear existing enemies
   for (uint8_t i = 0; i < MAX_ENEMIES; i++) enemies[i].alive = false;
   enemiesAlive = 0;
+  
+  // Reset the wave spawn counter
+  enemiesSpawnedThisWave = 0; 
+  
+  // Trick the timer so the very first enemy spawns instantly
+  lastEnemySpawn = millis() - ENEMY_SPAWN_INTERVAL;
 
-  // Spawn 4 + waveNumber enemies (capped at pool size)
-  uint8_t count = min((uint8_t)(4 + waveNumber), (uint8_t)MAX_ENEMIES);
-  for (uint8_t i = 0; i < count; i++) spawnEnemy();
-
-  Serial.print(F("[WAVE] Spawned ")); Serial.print(count);
-  Serial.print(F(" enemies  wave=")); Serial.println(waveNumber);
+  Serial.print(F("[WAVE] Started wave=")); Serial.println(waveNumber);
 }
 
 // ──────────────────────────────────────────────────────────────────
@@ -86,7 +91,7 @@ void nextWave() {
     bossX      = VIRTUAL_W / 2.0f;
     bossY      = 52.0f;
     bossDir    = 1;
-    bossHealth = 5 + (waveNumber / 5);   // More HP each boss cycle
+    bossHealth = 15 + (waveNumber / 5);   // More HP each boss cycle
     bossActive = true;
     lastBossMove = millis();
     lastBossFire = millis();

@@ -20,14 +20,55 @@
 // ──────────────────────────────────────────────────────────────────
 //  SCORE — KILL REGISTERED  (called from physics.ino)
 // ──────────────────────────────────────────────────────────────────
+// ──────────────────────────────────────────────────────────────────
+//  IPC PRODUCER — SCORE EVENT (called from physics.ino)
+// ──────────────────────────────────────────────────────────────────
 void registerKill() {
-  acquireMutex(mtxScore);   // Critical section: score
-  score += SCORE_PER_KILL;
-  releaseMutex(mtxScore);
-  Serial.print(F("[SCORE] Kill +"));
-  Serial.print(SCORE_PER_KILL);
-  Serial.print(F("  total="));
-  Serial.println(score);
+  // The Producer (physics task) writes to the bounded buffer
+  acquireMutex(ipcScoreQueue.mutex);
+  
+  if (ipcScoreQueue.count < SCORE_QUEUE_SIZE) {
+    ipcScoreQueue.buffer[ipcScoreQueue.head] = SCORE_PER_KILL;
+    ipcScoreQueue.head = (ipcScoreQueue.head + 1) % SCORE_QUEUE_SIZE;
+    ipcScoreQueue.count++;
+  } else {
+    Serial.println(F("[IPC] Buffer Full! Score message dropped."));
+  }
+  
+  releaseMutex(ipcScoreQueue.mutex);
+}
+
+// ──────────────────────────────────────────────────────────────────
+//  IPC CONSUMER — PROCESS SCORE QUEUE (runs in scheduler)
+// ──────────────────────────────────────────────────────────────────
+void taskScoreConsumer() {
+  if (gameState != STATE_PLAYING) return;
+  
+  // The Consumer reads from the bounded buffer
+  acquireMutex(ipcScoreQueue.mutex);
+  
+  if (ipcScoreQueue.count > 0) {
+    // 1. Extract the data
+    uint8_t points = ipcScoreQueue.buffer[ipcScoreQueue.tail];
+    ipcScoreQueue.tail = (ipcScoreQueue.tail + 1) % SCORE_QUEUE_SIZE;
+    ipcScoreQueue.count--;
+    
+    // Release queue mutex early to keep queue highly available
+    releaseMutex(ipcScoreQueue.mutex); 
+    
+    // 2. Safely update the global score
+    acquireMutex(mtxScore);
+    score += points;
+    releaseMutex(mtxScore);
+    
+    Serial.print(F("[IPC CONSUMER] Processed +"));
+    Serial.print(points);
+    Serial.print(F("  total="));
+    Serial.println(score);
+  } else {
+    // Buffer empty, just release
+    releaseMutex(ipcScoreQueue.mutex);
+  }
 }
 
 // ──────────────────────────────────────────────────────────────────

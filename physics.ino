@@ -102,11 +102,14 @@ void taskPhysics() {
     }
   }
 
+  uint8_t maxForThisWave = 4 + waveNumber;
   // ── Periodic new enemy spawn (during non-boss waves) ─────────────
-  if (!bossActive && enemiesAlive < MAX_ENEMIES &&
+  if (!bossActive && enemiesAlive < MAX_ENEMIES && 
+      enemiesSpawnedThisWave < maxForThisWave &&
       (now - lastEnemySpawn) >= ENEMY_SPAWN_INTERVAL) {
     lastEnemySpawn = now;
     spawnEnemy();
+    enemiesSpawnedThisWave++;
   }
 
   // ── Enemy fire timer ──────────────────────────────────────────────
@@ -154,9 +157,8 @@ void taskPhysics() {
     }
   }
 
-  // Wave clear: no enemies alive AND pool has been seeded for a while
-  if (enemiesAlive == 0 && !bossActive &&
-      (now - lastEnemySpawn) > ENEMY_SPAWN_INTERVAL * 2) {
+  // Wave clear: no enemies alive AND all enemies for this wave have been spawned
+  if (enemiesAlive == 0 && !bossActive && enemiesSpawnedThisWave >= maxForThisWave) {
     nextWave();
   }
 

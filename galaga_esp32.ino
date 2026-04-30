@@ -100,6 +100,7 @@ uint8_t bossHealth  = 0;
 uint32_t lastBossMove = 0;
 uint32_t lastBossFire = 0;
 uint32_t lastShootTime = 0;
+uint8_t enemiesSpawnedThisWave = 0;
 
 // ──────────────────────────────────────────────────────────────────
 //  BUTTON FLAGS  (written by buttons.ino ISR/poll)
@@ -153,11 +154,27 @@ void taskSensorPoll();     // sensors.ino
 void taskPhysics();        // physics.ino
 void taskRender();         // render.ino
 
+// ──────────────────────────────────────────────────────────────────
+//  IPC: PRODUCER-CONSUMER BOUNDED BUFFER
+// ──────────────────────────────────────────────────────────────────
+#define SCORE_QUEUE_SIZE 10
+
+struct ScoreQueue {
+  uint8_t buffer[SCORE_QUEUE_SIZE];
+  uint8_t head = 0;
+  uint8_t tail = 0;
+  uint8_t count = 0;
+  Mutex mutex; // Protects the queue from concurrent access
+} ipcScoreQueue;
+
+void taskScoreConsumer(); // Declare the consumer task
+
 Task scheduler[] = {
   { 0, SCHED_STATE_MS,   taskStateMachine },
   { 0, SCHED_SENSOR_MS,  taskSensorPoll   },
   { 0, SCHED_PHYSICS_MS, taskPhysics      },
   { 0, SCHED_RENDER_MS,  taskRender       },
+  { 0, IPC_MS,           taskScoreConsumer},
 };
 const uint8_t NUM_TASKS = sizeof(scheduler) / sizeof(Task);
 

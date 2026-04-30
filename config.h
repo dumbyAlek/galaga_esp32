@@ -53,6 +53,7 @@ const uint8_t BRIGHTNESS_VALUES[BRIGHTNESS_LEVELS] = { 10, 60, 150, 255 };
 #define SCHED_SENSOR_MS     20
 #define SCHED_PHYSICS_MS    16
 #define SCHED_RENDER_MS     33
+#define IPC_MS              30
 
 // ── Shoot Button ─────────────────────────────────────────────────
 // GPIO13 = SHOOT (ISR) — manual fire, confirm menus, wake from sleep
@@ -91,25 +92,8 @@ const uint8_t BRIGHTNESS_VALUES[BRIGHTNESS_LEVELS] = { 10, 60, 150, 255 };
 #define PLAYER_LIVES        3
 #define SCORE_PER_KILL      10
 
-// ── EEPROM map ───────────────────────────────────────────────────
-//  Byte  0-3  : uint32_t  high score
-//  Byte  4    : uint8_t   magic (0xA5)
-//  Byte  5    : uint8_t   brightness index (0-3)
-//  Byte  6    : uint8_t   buttons swapped (0|1)
-//  Byte  7-10 : float     accelY calibration offset
-//  Byte  11   : uint8_t   cal magic (0xB6)
-// #define EEPROM_SIZE         16
-// #define EE_HISCORE_ADDR     0
-// #define EE_MAGIC_ADDR       4
-// #define EE_MAGIC_VAL        0xA5
-// #define EE_BRIGHTNESS_ADDR  5
-// #define EE_BTNSWAP_ADDR     6
-// #define EE_CALOFFSET_ADDR   7
-// #define EE_CALMAG_ADDR      11
-// #define EE_CALMAG_VAL       0xB6
-
 #define EEPROM_SIZE         32
-#define EE_HISCORE_ADDR     0   // Bytes 0-11 now reserved for the 3 scores
+#define EE_HISCORE_ADDR     0
 #define EE_MAGIC_ADDR       12
 #define EE_MAGIC_VAL        0xA5
 #define EE_BRIGHTNESS_ADDR  13
