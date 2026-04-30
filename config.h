@@ -120,8 +120,9 @@ enum GameState : uint8_t {
 // ── Settings Menu Items ──────────────────────────────────────────
 #define SETTINGS_BRIGHTNESS 0
 #define SETTINGS_BTNSWAP    1
-#define SETTINGS_BACK       2
-#define SETTINGS_ITEMS      3
+#define SETTINGS_CALIBRATE  2
+#define SETTINGS_BACK       3
+#define SETTINGS_ITEMS      4
 
 // ── Pause Menu Items ─────────────────────────────────────────────
 #define PAUSE_RESUME    0

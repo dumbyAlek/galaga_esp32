@@ -46,6 +46,9 @@ void taskStateMachine() {
             btnSwapped = !btnSwapped;
             eepromSaveBtnSwap();
             break;
+          case SETTINGS_CALIBRATE:
+            runCalibration(); // Runs the sensor setup, then returns
+            break;
           case SETTINGS_BACK:
             gameState = STATE_HOME;
             break;

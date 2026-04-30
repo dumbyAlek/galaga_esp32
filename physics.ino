@@ -35,15 +35,20 @@ void taskPhysics() {
   // Polling PIN_SHOOT directly (not ISR flagA) allows:
   // Tap: flagA set by ISR (catches presses < 16ms)
   // Hold: digitalRead catches sustained press
-  bool tapped = flagA;
-  if (tapped) flagA = false;
+  bool tapped = !btnSwapped ? flagA : flagB;
+  if (tapped) {
+    if (!btnSwapped) flagA = false;
+    else flagB = false;
+  }
 
-  if ((tapped || digitalRead(PIN_SHOOT) == LOW) &&
+  // Respect the btnSwapped setting for the held hardware pin
+  uint8_t activeShootPin = !btnSwapped ? PIN_SHOOT : PIN_NAV;
+
+  if ((tapped || digitalRead(activeShootPin) == LOW) &&
       (now - lastShootTime) >= SHOOT_RATE_MS) {
     lastShootTime = now;
     spawnPlayerBullet();
   }
-
   // ── Player bullet movement + enemy collision ─────────────────────
   for (uint8_t i = 0; i < MAX_BULLETS; i++) {
     if (!playerBullets[i].active) continue;

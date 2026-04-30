@@ -354,9 +354,11 @@ void renderSettings() {
            btnSwapped ? "SWAP" : "NORM");
   vPrintStr(4, 42, sBuf, 1);
 
-  vPrint(4, 60, settingsCursor==SETTINGS_BACK ? F(">BACK") : F(" BACK"), 1);
+  vPrint(4, 60, settingsCursor==SETTINGS_CALIBRATE ? F(">CALIBRATE") : F(" CALIBRATE"), 1);
+  
+  vPrint(4, 78, settingsCursor==SETTINGS_BACK ? F(">BACK") : F(" BACK"), 1);
 
-  vDrawFastHLine(0, 74, VIRTUAL_W, SSD1306_WHITE);
-  vPrint(4, 80, F("NAV=cycle"), 1);
-  vPrint(4, 92, F("SHOOT=select"), 1);
+  vDrawFastHLine(0, 92, VIRTUAL_W, SSD1306_WHITE);
+  vPrint(4, 98, F("NAV=cycle"), 1);
+  vPrint(4, 110, F("SHOOT=select"), 1);
 }
