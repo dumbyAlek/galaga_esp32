@@ -1,6 +1,6 @@
 // ================================================================
-//  galaga_esp32.ino — Entry Point & Global Definitions
-//
+//  galaga_esp32.ino -- Presentable Edition
+// Entry Point & Global Definitions
 //  All global variables are defined here. Every other .ino file
 //  in this folder shares this scope (Arduino concatenates all
 //  .ino files into one translation unit before compiling).
