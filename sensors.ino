@@ -22,8 +22,13 @@ void taskSensorPoll() {
   mpu.getEvent(&a, &g, &temp);
 
   // Subtract calibration offset, then apply deadzone
-  float raw = a.acceleration.y - calOffsetX;
-  accelY = (fabsf(raw) > TILT_DEADZONE) ? raw : 0.0f;
+  float raw    = a.acceleration.y - calOffsetX;
+  float cooked = (fabsf(raw) > TILT_DEADZONE) ? raw : 0.0f;
+
+  // Critical section — accelY shared with taskPhysics
+  acquireMutex(mtxAccel);   // acquire()
+  accelY = cooked;
+  releaseMutex(mtxAccel);   // release()
 }
 
 // ──────────────────────────────────────────────────────────────────

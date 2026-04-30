@@ -35,11 +35,20 @@ void pollNav() {
 }
 
 bool consumeShoot() {
-  if (flagA) { flagA = false; return true; }
+  if (!btnSwapped) {
+    if (flagA) { flagA = false; return true; }
+  } else {
+    if (flagB) { flagB = false; return true; }
+  }
   return false;
 }
+
 bool consumeNav() {
-  if (flagB) { flagB = false; return true; }
+  if (!btnSwapped) {
+    if (flagB) { flagB = false; return true; }
+  } else {
+    if (flagA) { flagA = false; return true; }
+  }
   return false;
 }
 

@@ -1,6 +1,6 @@
 // ================================================================
-//  galaga_esp32.ino — Entry Point & Global Definitions
-//
+//  galaga_esp32.ino -- Presentable Edition
+// Entry Point & Global Definitions
 //  All global variables are defined here. Every other .ino file
 //  in this folder shares this scope (Arduino concatenates all
 //  .ino files into one translation unit before compiling).
@@ -71,6 +71,8 @@ struct Stone  { float x, y, vy; uint8_t w, h; bool active; };
 float    shipX        = VIRTUAL_W / 2.0f;
 uint8_t  lives        = PLAYER_LIVES;
 uint32_t score        = 0;
+uint16_t cyclesPassed = 0;
+uint16_t bossesKilled = 0;
 
 Bullet   playerBullets[MAX_BULLETS];
 Bullet   enemyBullets[MAX_ENEMY_BULLETS];
@@ -98,12 +100,45 @@ uint8_t bossHealth  = 0;
 uint32_t lastBossMove = 0;
 uint32_t lastBossFire = 0;
 uint32_t lastShootTime = 0;
+uint8_t enemiesSpawnedThisWave = 0;
 
 // ──────────────────────────────────────────────────────────────────
 //  BUTTON FLAGS  (written by buttons.ino ISR/poll)
 // ──────────────────────────────────────────────────────────────────
 volatile bool flagA = false;
 bool          flagB = false;
+
+// ================================================================
+//  MUTEX LOCKS — Process Synchronization (Silberschatz Ch.6)
+//
+//  Implements the mutex lock pattern from the textbook:
+//    acquireMutex() = acquire() — busy-wait spinlock
+//    releaseMutex() = release() — set lock free
+//
+//  Each shared variable accessed by multiple tasks gets its
+//  own mutex to protect its critical section.
+//  On ESP32 single-core Xtensa LX6, the primary real risk is
+//  ISR context vs main-loop tasks — volatile bool writes are
+//  atomic on this architecture, making this a valid spinlock.
+// ================================================================
+struct Mutex {
+  volatile bool lock = false;
+};
+
+void acquireMutex(Mutex& m) {
+  while (m.lock);   // Entry section: busy-wait (spinlock)
+  m.lock = true;    // Acquire
+}
+
+void releaseMutex(Mutex& m) {
+  m.lock = false;   // Exit section: release
+}
+
+// One mutex per shared resource
+Mutex mtxAccel;      // Protects: accelY
+Mutex mtxScore;      // Protects: score
+Mutex mtxLives;      // Protects: lives
+Mutex mtxGameState;  // Protects: gameState
 
 // ──────────────────────────────────────────────────────────────────
 //  ROUND-ROBIN TASK SCHEDULER
@@ -119,11 +154,27 @@ void taskSensorPoll();     // sensors.ino
 void taskPhysics();        // physics.ino
 void taskRender();         // render.ino
 
+// ──────────────────────────────────────────────────────────────────
+//  IPC: PRODUCER-CONSUMER BOUNDED BUFFER
+// ──────────────────────────────────────────────────────────────────
+#define SCORE_QUEUE_SIZE 10
+
+struct ScoreQueue {
+  uint8_t buffer[SCORE_QUEUE_SIZE];
+  uint8_t head = 0;
+  uint8_t tail = 0;
+  uint8_t count = 0;
+  Mutex mutex; // Protects the queue from concurrent access
+} ipcScoreQueue;
+
+void taskScoreConsumer(); // Declare the consumer task
+
 Task scheduler[] = {
   { 0, SCHED_STATE_MS,   taskStateMachine },
   { 0, SCHED_SENSOR_MS,  taskSensorPoll   },
   { 0, SCHED_PHYSICS_MS, taskPhysics      },
   { 0, SCHED_RENDER_MS,  taskRender       },
+  { 0, IPC_MS,           taskScoreConsumer},
 };
 const uint8_t NUM_TASKS = sizeof(scheduler) / sizeof(Task);
 

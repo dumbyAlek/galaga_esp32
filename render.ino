@@ -60,26 +60,32 @@ void showSplash() {
 // ──────────────────────────────────────────────────────────────────
 void renderHome() {
   // ── Top 3 high scores ──────────────────────────────────────────
-  vPrint(4,  4, F("TOP SCORES"), 1);
-  vDrawFastHLine(0, 14, VIRTUAL_W, SSD1306_WHITE);
+  vDrawFastHLine(0, 50, VIRTUAL_W, SSD1306_WHITE);
+  vPrint(4,  55, F("TOP SCORES"), 1);
+  vDrawFastHLine(0, 65, VIRTUAL_W, SSD1306_WHITE);
 
   const char* medals[3] = {"1.", "2.", "3."};
   for (uint8_t i = 0; i < 3; i++) {
-    vPrintStr(4,  18 + i * 14, medals[i], 1);
-    vPrintUL(20, 18 + i * 14, topScores[i], 1);
+    vPrintStr(4,  70 + i * 14, medals[i], 1);
+    vPrintUL(20, 70 + i * 14, topScores[i], 1);
   }
-  vDrawFastHLine(0, 62, VIRTUAL_W, SSD1306_WHITE);
+  vDrawFastHLine(0, 110, VIRTUAL_W, SSD1306_WHITE);
 
   // ── Menu ───────────────────────────────────────────────────────
-  const uint8_t menuY = 70;
+  const uint8_t menuY = 160;
   const uint8_t lineH = 18;
   vPrint(4, menuY,              homeCursor==HOME_START    ? F(">START GAME") : F(" START GAME"), 1);
   vPrint(4, menuY + lineH,      homeCursor==HOME_SETTINGS ? F(">SETTINGS")   : F(" SETTINGS"),   1);
   vPrint(4, menuY + lineH*2,    homeCursor==HOME_QUIT     ? F(">QUIT")       : F(" QUIT"),       1);
 
-  // ── Blinking GALAGA title at bottom ────────────────────────────
+  // ── Blinking GALAGA title at TOP ────────────────────────────
   if ((millis() / 600) % 2 == 0) {
-    vPrint(4, 230, F("GALAGA"), 2);
+    vPrint( 0,  0, F("GA"),        2);
+    vPrint( 1,  1, F("GA"),        2);
+    vPrint( 20,  12, F("LA"),        2);
+    vPrint( 21,  13, F("LA"),        2);
+    vPrint( 40,  24, F("GA"),        2);
+    vPrint( 41,  25, F("GA"),        2);
   }
 }
 
@@ -98,8 +104,49 @@ void renderPlaying() {
     vDrawPixel(stars[i].x, stars[i].y, SSD1306_WHITE);
   }
   
-  // Score — very top
-  vPrintUL(0, 0, score, 1);
+  // ── TOP HUD (Overlays everything else) ───────────────────────────
+  // Draw a solid black box to hide stars/enemies scrolling under the text
+  vFillRect(0, 0, VIRTUAL_W, 37, SSD1306_BLACK);
+
+// 1) Score (Top Left)
+  acquireMutex(mtxScore);
+  uint32_t localScore = score;
+  releaseMutex(mtxScore);
+  
+  char scoreBuf[16];
+  snprintf(scoreBuf, sizeof(scoreBuf), "Score:%lu", localScore);
+  vPrintStr(0, 2, scoreBuf, 1);
+
+  // 2) Lives / Hearts (Top Right)
+  acquireMutex(mtxLives);
+  uint8_t hudLives = lives;
+  releaseMutex(mtxLives);
+
+  for (uint8_t i = 0; i < hudLives; i++) {
+    // Keep X fixed on the right edge, but push Y down for each extra life
+    int16_t hx = VIRTUAL_W - 6; 
+    int16_t hy = 2 + (i * 7);   // 5px heart + 2px gap between them
+
+    // Draw the custom 5x5 pixel heart at the new coordinates!
+    vDrawPixel(hx+1, hy,   SSD1306_WHITE); vDrawPixel(hx+3, hy,   SSD1306_WHITE);
+    vDrawPixel(hx,   hy+1, SSD1306_WHITE); vDrawPixel(hx+1, hy+1, SSD1306_WHITE); vDrawPixel(hx+2, hy+1, SSD1306_WHITE); vDrawPixel(hx+3, hy+1, SSD1306_WHITE); vDrawPixel(hx+4, hy+1, SSD1306_WHITE);
+    vDrawPixel(hx,   hy+2, SSD1306_WHITE); vDrawPixel(hx+1, hy+2, SSD1306_WHITE); vDrawPixel(hx+2, hy+2, SSD1306_WHITE); vDrawPixel(hx+3, hy+2, SSD1306_WHITE); vDrawPixel(hx+4, hy+2, SSD1306_WHITE);
+    vDrawPixel(hx+1, hy+3, SSD1306_WHITE); vDrawPixel(hx+2, hy+3, SSD1306_WHITE); vDrawPixel(hx+3, hy+3, SSD1306_WHITE);
+    vDrawPixel(hx+2, hy+4, SSD1306_WHITE);
+  }
+
+  // 3) Cycles (Line 2)
+  char cycBuf[16];
+  snprintf(cycBuf, sizeof(cycBuf), "Round:%d", cyclesPassed);
+  vPrintStr(0, 13, cycBuf, 1);
+
+  // 4) Bosses (Line 3)
+  char bossBuf[16];
+  snprintf(bossBuf, sizeof(bossBuf), "Boss:%d", bossesKilled);
+  vPrintStr(0, 24, bossBuf, 1);
+
+  // 5) Separator Line
+  vDrawFastHLine(0, 36, VIRTUAL_W, SSD1306_WHITE);
 
   // Alien enemies — flat pool, random positions, drift downward
   for (uint8_t e = 0; e < MAX_ENEMIES; e++) {
@@ -133,6 +180,9 @@ void renderPlaying() {
   }
 
   // Stones — irregular falling rocks
+  acquireMutex(mtxLives);
+  uint8_t localLives = lives; // Critical Section: Lives and Rocks
+  releaseMutex(mtxLives);
   for (uint8_t i = 0; i < MAX_STONES; i++) {
     if (!stones[i].active) continue;
     int16_t sx = (int16_t)stones[i].x;
@@ -215,15 +265,11 @@ void renderPlaying() {
     vDrawPixel(bx+10, by+8, SSD1306_WHITE);
 
     // Health bar
-    uint8_t maxHP = 5 + (waveNumber / 5);
+    uint8_t maxHP = 15 + (waveNumber / 5);
     vDrawRect(bx-7, by+8, 15, 3, SSD1306_WHITE);
     uint8_t hpW = (uint8_t)(14.0f * bossHealth / maxHP);
     vFillRect(bx-7, by+8, hpW, 3, SSD1306_WHITE);
 
-    // Boss wave label
-    char wBuf[8];
-    snprintf(wBuf, sizeof(wBuf), "W%d", waveNumber);
-    vPrintStr(0, 0, wBuf, 1);
   }
 
   // Player bullets — travel upward through full 256px height
@@ -237,8 +283,8 @@ void renderPlaying() {
   // Enemy bullets — travel downward
   for (uint8_t i = 0; i < MAX_ENEMY_BULLETS; i++) {
     if (!enemyBullets[i].active) continue;
-    vDrawPixel((int16_t)enemyBullets[i].x, (int16_t)enemyBullets[i].y,   SSD1306_WHITE);
-    vDrawPixel((int16_t)enemyBullets[i].x, (int16_t)enemyBullets[i].y+1, SSD1306_WHITE);
+    // Use vDrawFastVLine to make the bullets 5 pixels long (or adjust as you prefer)
+    vDrawFastVLine((int16_t)enemyBullets[i].x, (int16_t)enemyBullets[i].y, 5, SSD1306_WHITE);
   }
 
   // Ship — bottom panel, vY ~242-249. Fits in 64px width (half-width=3)
@@ -249,10 +295,6 @@ void renderPlaying() {
                 SSD1306_WHITE);
   vDrawPixel(sx - 1, SHIP_Y + 1, SSD1306_WHITE);
   vDrawPixel(sx + 1, SHIP_Y + 1, SSD1306_WHITE);
-
-  // Lives — bottom row, right-aligned
-  for (uint8_t i = 0; i < lives; i++)
-    vFillCircle(VIRTUAL_W - 4 - (i * 7), VIRTUAL_H - 3, 2, SSD1306_WHITE);
 }
 
 // ──────────────────────────────────────────────────────────────────
@@ -290,7 +332,7 @@ void renderGameOver() {
   }
 
   vDrawFastHLine(0, 140, VIRTUAL_W, SSD1306_WHITE);
-  vPrint(2, 150, F("PRESS NAV"),    1);
+  vPrint(2, 150, F("PRESS Shoot"),    1);
   vPrint(6, 162, F("TO EXIT"),      1);
 }
 
@@ -312,9 +354,11 @@ void renderSettings() {
            btnSwapped ? "SWAP" : "NORM");
   vPrintStr(4, 42, sBuf, 1);
 
-  vPrint(4, 60, settingsCursor==SETTINGS_BACK ? F(">BACK") : F(" BACK"), 1);
+  vPrint(4, 60, settingsCursor==SETTINGS_CALIBRATE ? F(">CALIBRATE") : F(" CALIBRATE"), 1);
+  
+  vPrint(4, 78, settingsCursor==SETTINGS_BACK ? F(">BACK") : F(" BACK"), 1);
 
-  vDrawFastHLine(0, 74, VIRTUAL_W, SSD1306_WHITE);
-  vPrint(4, 80, F("NAV=cycle"), 1);
-  vPrint(4, 92, F("SHOOT=select"), 1);
+  vDrawFastHLine(0, 92, VIRTUAL_W, SSD1306_WHITE);
+  vPrint(4, 98, F("NAV=cycle"), 1);
+  vPrint(4, 110, F("SHOOT=select"), 1);
 }

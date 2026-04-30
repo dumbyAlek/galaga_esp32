@@ -16,8 +16,10 @@ void taskStateMachine() {
       if (shot) {
         switch (homeCursor) {
           case HOME_START:
-            initGame();
-            gameState = STATE_PLAYING;
+          initGame();
+          acquireMutex(mtxGameState);
+          gameState = STATE_PLAYING; // Critical Section: Playing State
+          releaseMutex(mtxGameState);
             Serial.println(F("[STATE] HOME -> PLAYING"));
             break;
           case HOME_SETTINGS:
@@ -43,6 +45,9 @@ void taskStateMachine() {
           case SETTINGS_BTNSWAP:
             btnSwapped = !btnSwapped;
             eepromSaveBtnSwap();
+            break;
+          case SETTINGS_CALIBRATE:
+            runCalibration(); // Runs the sensor setup, then returns
             break;
           case SETTINGS_BACK:
             gameState = STATE_HOME;

@@ -20,10 +20,13 @@ void taskPhysics() {
 
   // ── Ship movement ───────────────────────────────────────────────
   // accelY is negative when tilted left, positive when tilted right
-  float currentScale = (accelY < 0) ? TILT_SCALE_LEFT : TILT_SCALE_RIGHT;
-  
-  // Apply the direction-specific scale
-  shipX += accelY * currentScale * SHIP_SPEED_MAX;
+  // Critical section — reading accelY written by taskSensorPoll
+  acquireMutex(mtxAccel);
+  float localAccel = accelY;
+  releaseMutex(mtxAccel);
+
+  float currentScale = (localAccel < 0) ? TILT_SCALE_LEFT : TILT_SCALE_RIGHT;
+  shipX += localAccel * currentScale * SHIP_SPEED_MAX;
   shipX  = constrain(shipX,
                      (float)SHIP_HALF_W,
                      (float)(VIRTUAL_W - SHIP_HALF_W));
@@ -32,15 +35,20 @@ void taskPhysics() {
   // Polling PIN_SHOOT directly (not ISR flagA) allows:
   // Tap: flagA set by ISR (catches presses < 16ms)
   // Hold: digitalRead catches sustained press
-  bool tapped = flagA;
-  if (tapped) flagA = false;
+  bool tapped = !btnSwapped ? flagA : flagB;
+  if (tapped) {
+    if (!btnSwapped) flagA = false;
+    else flagB = false;
+  }
 
-  if ((tapped || digitalRead(PIN_SHOOT) == LOW) &&
+  // Respect the btnSwapped setting for the held hardware pin
+  uint8_t activeShootPin = !btnSwapped ? PIN_SHOOT : PIN_NAV;
+
+  if ((tapped || digitalRead(activeShootPin) == LOW) &&
       (now - lastShootTime) >= SHOOT_RATE_MS) {
     lastShootTime = now;
     spawnPlayerBullet();
   }
-
   // ── Player bullet movement + enemy collision ─────────────────────
   for (uint8_t i = 0; i < MAX_BULLETS; i++) {
     if (!playerBullets[i].active) continue;
@@ -77,6 +85,7 @@ void taskPhysics() {
         bossHealth--;
         registerKill();   // +10 per hit
         if (bossHealth == 0) {
+          bossesKilled++;
           bossActive = false;
           score += 40;   // Bonus for killing boss
           Serial.println(F("[BOSS] Defeated! +40 bonus"));
@@ -98,11 +107,14 @@ void taskPhysics() {
     }
   }
 
+  uint8_t maxForThisWave = 4 + waveNumber;
   // ── Periodic new enemy spawn (during non-boss waves) ─────────────
-  if (!bossActive && enemiesAlive < MAX_ENEMIES &&
+  if (!bossActive && enemiesAlive < MAX_ENEMIES && 
+      enemiesSpawnedThisWave < maxForThisWave &&
       (now - lastEnemySpawn) >= ENEMY_SPAWN_INTERVAL) {
     lastEnemySpawn = now;
     spawnEnemy();
+    enemiesSpawnedThisWave++;
   }
 
   // ── Enemy fire timer ──────────────────────────────────────────────
@@ -150,9 +162,8 @@ void taskPhysics() {
     }
   }
 
-  // Wave clear: no enemies alive AND pool has been seeded for a while
-  if (enemiesAlive == 0 && !bossActive &&
-      (now - lastEnemySpawn) > ENEMY_SPAWN_INTERVAL * 2) {
+  // Wave clear: no enemies alive AND all enemies for this wave have been spawned
+  if (enemiesAlive == 0 && !bossActive && enemiesSpawnedThisWave >= maxForThisWave) {
     nextWave();
   }
 
@@ -185,6 +196,8 @@ void initGame() {
   shipX = VIRTUAL_W / 2.0f;
   lives = PLAYER_LIVES;
   score = 0;
+  cyclesPassed = 0;
+  bossesKilled = 0;
 
   for (uint8_t i = 0; i < MAX_BULLETS;       i++) playerBullets[i].active = false;
   for (uint8_t i = 0; i < MAX_ENEMY_BULLETS; i++) enemyBullets[i].active  = false;
